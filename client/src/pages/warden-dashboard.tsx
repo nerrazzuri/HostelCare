@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { TicketList } from "@/components/ticket-list";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LogOut } from "lucide-react";
 
 export default function WardenDashboard() {
@@ -32,18 +31,7 @@ export default function WardenDashboard() {
           </p>
         </div>
 
-        <Tabs defaultValue="active" className="w-full">
-          <TabsList>
-            <TabsTrigger value="active">Active Tickets</TabsTrigger>
-            <TabsTrigger value="vendor">Vendor Required</TabsTrigger>
-          </TabsList>
-          <TabsContent value="active">
-            <TicketList filter="active" />
-          </TabsContent>
-          <TabsContent value="vendor">
-            <TicketList filter="needs_vendor" />
-          </TabsContent>
-        </Tabs>
+        <TicketList />
       </main>
     </div>
   );

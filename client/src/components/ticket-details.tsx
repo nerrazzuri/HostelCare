@@ -35,27 +35,31 @@ const getAvailableStatuses = (currentStatus: string, role: string): string[] => 
     return Object.values(TicketStatus);
   }
 
-  switch (currentStatus) {
-    case TicketStatus.ASSIGNED:
-      return [TicketStatus.IN_PROGRESS, TicketStatus.NEEDS_VENDOR, TicketStatus.ESCALATED];
-    case TicketStatus.IN_PROGRESS:
-      return [TicketStatus.RESOLVED, TicketStatus.NEEDS_VENDOR, TicketStatus.ESCALATED];
-    case TicketStatus.NEEDS_VENDOR:
-      return [TicketStatus.VENDOR_ASSIGNED];
-    default:
-      return [];
+  if (role === "warden") {
+    switch (currentStatus) {
+      case TicketStatus.ASSIGNED:
+        return [TicketStatus.IN_PROGRESS, TicketStatus.NEEDS_VENDOR];
+      case TicketStatus.IN_PROGRESS:
+        return [TicketStatus.RESOLVED, TicketStatus.NEEDS_VENDOR];
+      case TicketStatus.NEEDS_VENDOR:
+        return [TicketStatus.IN_PROGRESS]; // Can revert back to in_progress if vendor not needed
+      case TicketStatus.VENDOR_ASSIGNED:
+        return []; // Waiting for admin approval
+      case TicketStatus.VENDOR_IN_PROGRESS:
+        return [TicketStatus.RESOLVED];
+      default:
+        return [];
+    }
   }
+
+  return [];
 };
 
 export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [selectedStatus, setSelectedStatus] = useState(ticket.status);
-
-  const { data: wardens = [] } = useQuery<User[]>({
-    queryKey: ["/api/users/wardens"],
-    enabled: user?.role === "admin",
-  });
+  const [showVendorSelect, setShowVendorSelect] = useState(false);
 
   const { data: vendors = [] } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
@@ -86,6 +90,27 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
   const availableStatuses = getAvailableStatuses(ticket.status, user?.role || "");
   const canAssignVendor = user?.role === "warden" && ticket.status === TicketStatus.NEEDS_VENDOR;
   const canApproveVendor = user?.role === "admin" && ticket.status === TicketStatus.VENDOR_ASSIGNED;
+
+  // Handle status change
+  const handleStatusChange = (newStatus: string) => {
+    setSelectedStatus(newStatus);
+
+    if (newStatus === TicketStatus.NEEDS_VENDOR) {
+      setShowVendorSelect(true);
+    } else {
+      setShowVendorSelect(false);
+      updateTicketMutation.mutate({ status: newStatus });
+    }
+  };
+
+  // Handle vendor assignment
+  const handleVendorAssignment = (vendorId: string) => {
+    updateTicketMutation.mutate({
+      vendorId: parseInt(vendorId),
+      status: TicketStatus.VENDOR_ASSIGNED,
+    });
+    setShowVendorSelect(false);
+  };
 
   return (
     <Sheet open={open} onOpenChange={() => onClose()}>
@@ -153,10 +178,7 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
                   {availableStatuses.length > 0 && (
                     <Select
                       value={selectedStatus}
-                      onValueChange={(status) => {
-                        setSelectedStatus(status);
-                        updateTicketMutation.mutate({ status });
-                      }}
+                      onValueChange={handleStatusChange}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Update status" />
@@ -164,46 +186,21 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
                       <SelectContent>
                         {availableStatuses.map((status) => (
                           <SelectItem key={status} value={status}>
-                            {status}
+                            {status.replace(/_/g, ' ').replace(/\w\S*/g, 
+                              (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+                            )}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   )}
 
-                  {user?.role === "admin" && !ticket.assignedTo && (
+                  {showVendorSelect && (
                     <Select
-                      onValueChange={(wardenId) =>
-                        updateTicketMutation.mutate({
-                          assignedTo: parseInt(wardenId),
-                          status: TicketStatus.ASSIGNED,
-                        })
-                      }
+                      onValueChange={handleVendorAssignment}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Assign warden" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {wardens.map((warden) => (
-                          <SelectItem key={warden.id} value={warden.id.toString()}>
-                            {warden.username}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-
-                  {canAssignVendor && (
-                    <Select
-                      onValueChange={(vendorId) =>
-                        updateTicketMutation.mutate({
-                          vendorId: parseInt(vendorId),
-                          status: TicketStatus.VENDOR_ASSIGNED,
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Assign vendor" />
+                        <SelectValue placeholder="Select vendor" />
                       </SelectTrigger>
                       <SelectContent>
                         {vendors
@@ -226,10 +223,10 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
                   {canApproveVendor && (
                     <div className="flex gap-2">
                       <Select
-                        onValueChange={(status) =>
+                        onValueChange={(action) =>
                           updateTicketMutation.mutate({
-                            status: status === "approve" 
-                              ? TicketStatus.VENDOR_IN_PROGRESS 
+                            status: action === "approve"
+                              ? TicketStatus.VENDOR_IN_PROGRESS
                               : TicketStatus.NEEDS_VENDOR
                           })
                         }
