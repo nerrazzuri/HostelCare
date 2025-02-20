@@ -14,7 +14,7 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+        <div className="max-w-[95%] mx-auto px-2 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">Admin Dashboard</h1>
           <div className="flex items-center gap-4">
             <Button 
@@ -42,7 +42,7 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="max-w-[95%] mx-auto px-2 py-8">
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-2">Maintenance Tickets</h2>
           <p className="text-muted-foreground">
