@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, BarChart3, Clock, Download, Target } from "lucide-react";
+import { ArrowLeft, BarChart3, Clock, Download, Target, Wrench, Store } from "lucide-react";
 import { useLocation } from "wouter";
 import { Ticket, TicketStatus, TicketPriority } from "@shared/schema";
 
@@ -63,7 +63,7 @@ export default function AnalyticsDashboard() {
       priority: ticket.priority,
       location: ticket.location,
       created: new Date(ticket.createdAt).toLocaleDateString(),
-      resolved: ticket.status === TicketStatus.RESOLVED 
+      resolved: ticket.status === TicketStatus.RESOLVED
         ? new Date(ticket.updatedAt).toLocaleDateString()
         : 'N/A',
       resolutionTime: ticket.status === TicketStatus.RESOLVED
@@ -87,7 +87,34 @@ export default function AnalyticsDashboard() {
     document.body.removeChild(a);
   };
 
-  if (isLoading) {
+  // Calculate cost metrics
+  const ticketUpdates = useQuery({
+    queryKey: ["/api/ticket-updates"],
+  });
+
+  const updates = ticketUpdates.data || [];
+
+  const costAnalysis = updates.reduce((acc, update) => {
+    if (update.cost) {
+      acc.total += update.cost;
+      acc[update.costType] = (acc[update.costType] || 0) + update.cost;
+    }
+    return acc;
+  }, { total: 0, repair: 0, vendor: 0 });
+
+  // Monthly cost trends
+  const monthlyTrends = updates.reduce((acc, update) => {
+    if (update.cost) {
+      const month = new Date(update.createdAt).toLocaleString('default', { month: 'long' });
+      if (!acc[month]) {
+        acc[month] = { repair: 0, vendor: 0 };
+      }
+      acc[month][update.costType] += update.cost;
+    }
+    return acc;
+  }, {} as Record<string, { repair: number; vendor: number }>);
+
+  if (isLoading || ticketUpdates.isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <Clock className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -101,8 +128,8 @@ export default function AnalyticsDashboard() {
         <div className="max-w-[95%] mx-auto px-2 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 onClick={() => setLocation("/admin")}
                 className="justify-start sm:justify-center"
               >
@@ -179,11 +206,56 @@ export default function AnalyticsDashboard() {
           </Card>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ${costAnalysis.total.toFixed(2)}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Repair Costs</CardTitle>
+              <Wrench className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ${costAnalysis.repair.toFixed(2)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {((costAnalysis.repair / costAnalysis.total) * 100).toFixed(1)}% of total
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Vendor Costs</CardTitle>
+              <Store className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ${costAnalysis.vendor.toFixed(2)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {((costAnalysis.vendor / costAnalysis.total) * 100).toFixed(1)}% of total
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
         <Tabs defaultValue="status" className="mt-6">
           <TabsList className="w-full flex-wrap">
             <TabsTrigger value="status">Status Distribution</TabsTrigger>
             <TabsTrigger value="location">Location Analysis</TabsTrigger>
             <TabsTrigger value="priority">Priority Distribution</TabsTrigger>
+            <TabsTrigger value="costs">Cost Analysis</TabsTrigger>
           </TabsList>
 
           <TabsContent value="status" className="space-y-4">
@@ -247,6 +319,39 @@ export default function AnalyticsDashboard() {
                         <span className="text-muted-foreground ml-2">
                           ({((count / totalTickets) * 100).toFixed(1)}%)
                         </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="costs" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Monthly Cost Trends</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {Object.entries(monthlyTrends).map(([month, costs]) => (
+                    <div key={month}>
+                      <h3 className="font-medium mb-2">{month}</h3>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Repair Costs:</span>
+                          <span className="font-medium">${costs.repair.toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Vendor Costs:</span>
+                          <span className="font-medium">${costs.vendor.toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center justify-between border-t pt-2">
+                          <span>Total:</span>
+                          <span className="font-medium">
+                            ${(costs.repair + costs.vendor).toFixed(2)}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ))}
