@@ -78,7 +78,9 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
   const canAssignWarden = user?.role === "admin" && ticket.status === TicketStatus.OPEN;
 
   // Admin can modify vendor selection during needs_vendor status
-  const canModifyVendor = user?.role === "admin" && (ticket.status === TicketStatus.NEEDS_VENDOR || ticket.vendorId);
+  const canModifyVendor = user?.role === "admin" && 
+    ticket.status === TicketStatus.NEEDS_VENDOR && 
+    ticket.status !== TicketStatus.PENDING_APPROVAL;
 
   // Admin can approve resolution
   const canApproveResolution = user?.role === "admin" && ticket.status === TicketStatus.PENDING_APPROVAL;
