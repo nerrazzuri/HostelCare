@@ -9,7 +9,7 @@ export default function QRCodeManagement() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
-        <div className="container mx-auto px-4 py-4">
+        <div className="max-w-[95%] mx-auto px-2 py-4">
           <Button 
             variant="ghost" 
             onClick={() => setLocation("/admin")}
@@ -20,7 +20,7 @@ export default function QRCodeManagement() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="max-w-[95%] mx-auto px-2 py-8">
         <div className="mb-8">
           <h1 className="text-2xl font-bold mb-2">QR Code Management</h1>
           <p className="text-muted-foreground">

@@ -18,7 +18,7 @@ export default function VendorManagement() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
-        <div className="container mx-auto px-4 py-4">
+        <div className="max-w-[95%] mx-auto px-2 py-4">
           <Button 
             variant="ghost" 
             onClick={() => setLocation("/admin")}
@@ -29,7 +29,7 @@ export default function VendorManagement() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="max-w-[95%] mx-auto px-2 py-8">
         <div className="mb-8">
           <div className="flex justify-between items-center">
             <div>
