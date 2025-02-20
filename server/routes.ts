@@ -54,9 +54,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/tickets/:id", requireRole(["admin", "warden"]), async (req, res) => {
     const ticketId = parseInt(req.params.id);
     const updateSchema = z.object({
-      status: z.enum(Object.values(TicketStatus)),
+      status: z.enum(Object.values(TicketStatus) as [string, ...string[]]),
       assignedTo: z.number().optional(),
-      vendorId: z.number().optional(),
+      vendorId: z.number().optional().nullable(),
     });
 
     const updates = updateSchema.parse(req.body);
@@ -70,15 +70,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const ticketId = parseInt(req.params.id);
     const files = req.files as Express.Multer.File[] | undefined;
 
-    const updateData = insertTicketUpdateSchema.parse({
-      ...req.body,
-      ticketId,
-      images: files?.map(f => f.path) || [],
-      createdBy: req.user.id
-    });
+    try {
+      const updateData = insertTicketUpdateSchema.parse({
+        ...req.body,
+        ticketId,
+        images: files?.map(f => f.path) || [],
+        createdBy: req.user.id,
+        comment: req.body.comment || '' // Provide default empty string if comment is missing
+      });
 
-    const update = await storage.createTicketUpdate(updateData);
-    res.status(201).json(update);
+      const update = await storage.createTicketUpdate(updateData);
+      res.status(201).json(update);
+    } catch (error) {
+      console.error('Ticket update validation error:', error);
+      res.status(400).json({ message: 'Invalid ticket update data', error });
+    }
   });
 
   // Vendors
