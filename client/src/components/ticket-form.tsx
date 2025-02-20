@@ -10,8 +10,9 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertCircle } from "lucide-react";
+import { ImageUpload } from "@/components/ui/image-upload";
 
 interface TicketFormProps {
   initialLocation?: string;
@@ -20,6 +21,7 @@ interface TicketFormProps {
 export function TicketForm({ initialLocation }: TicketFormProps) {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
 
   const form = useForm({
     resolver: zodResolver(insertTicketSchema),
@@ -71,15 +73,16 @@ export function TicketForm({ initialLocation }: TicketFormProps) {
     }
 
     const formData = new FormData();
-    Object.entries(data).forEach(([key, value]: [string, any]) => {
-      if (key === "images") {
-        Array.from(value).forEach((file: File) => {
-          formData.append("images", file);
-        });
-      } else {
-        formData.append(key, value);
-      }
+    formData.append("title", data.title);
+    formData.append("description", data.description);
+    formData.append("location", data.location);
+    formData.append("priority", data.priority);
+
+    // Append each image file
+    imageFiles.forEach((file) => {
+      formData.append("images", file);
     });
+
     createTicketMutation.mutate(formData);
   };
 
@@ -174,16 +177,14 @@ export function TicketForm({ initialLocation }: TicketFormProps) {
         <FormField
           control={form.control}
           name="images"
-          render={({ field: { value, onChange, ...field } }) => (
+          render={({ field }) => (
             <FormItem>
               <FormLabel>Images</FormLabel>
               <FormControl>
-                <Input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={(e) => onChange(e.target.files)}
-                  {...field}
+                <ImageUpload
+                  onChange={setImageFiles}
+                  maxFiles={3}
+                  value={field.value}
                 />
               </FormControl>
               <FormMessage />

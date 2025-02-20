@@ -7,11 +7,12 @@ import { Ticket, TicketStatus, User, Vendor } from "@shared/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Clock, MapPin, Store, AlertCircle } from "lucide-react";
+import { Clock, MapPin, Store, AlertCircle, Image } from "lucide-react";
 import { TicketUpdates } from "./ticket-updates";
 import { TicketUpdateForm } from "./ticket-update-form";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/use-auth";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 interface TicketDetailsProps {
   ticket: Ticket;
@@ -78,8 +79,8 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
   const canAssignWarden = user?.role === "admin" && ticket.status === TicketStatus.OPEN;
 
   // Admin can modify vendor selection during needs_vendor status
-  const canModifyVendor = user?.role === "admin" && 
-    ticket.status === TicketStatus.NEEDS_VENDOR && 
+  const canModifyVendor = user?.role === "admin" &&
+    ticket.status === TicketStatus.NEEDS_VENDOR &&
     ticket.status !== TicketStatus.PENDING_APPROVAL;
 
   // Admin can approve resolution
@@ -186,6 +187,34 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
               <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
               <p className="text-sm">{ticket.description}</p>
             </div>
+
+            {ticket.images && ticket.images.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Images</h3>
+                <div className="grid grid-cols-3 gap-2">
+                  {ticket.images.map((imagePath, index) => (
+                    <Dialog key={index}>
+                      <DialogTrigger asChild>
+                        <div className="cursor-pointer relative aspect-square">
+                          <img
+                            src={imagePath}
+                            alt={`Ticket image ${index + 1}`}
+                            className="w-full h-full object-cover rounded-lg hover:opacity-90 transition-opacity"
+                          />
+                        </div>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-3xl">
+                        <img
+                          src={imagePath}
+                          alt={`Ticket image ${index + 1}`}
+                          className="w-full h-full object-contain"
+                        />
+                      </DialogContent>
+                    </Dialog>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>
