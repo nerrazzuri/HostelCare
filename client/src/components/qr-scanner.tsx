@@ -4,7 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
-export function QRScanner() {
+interface QRScannerProps {
+  onLocationScanned: (location: string) => void;
+}
+
+export function QRScanner({ onLocationScanned }: QRScannerProps) {
   const [scanner, setScanner] = useState<Html5QrcodeScanner | null>(null);
   const { toast } = useToast();
 
@@ -24,7 +28,8 @@ export function QRScanner() {
               title: "Location Scanned",
               description: `Location: ${locationData.location}`,
             });
-            // Here you would typically update the form with the location
+            onLocationScanned(locationData.location);
+            qrScanner.clear();
           }
         } catch (err) {
           toast({

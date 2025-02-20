@@ -10,6 +10,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { useEffect } from 'react';
 
 interface TicketFormProps {
   initialLocation?: string;
@@ -18,7 +19,7 @@ interface TicketFormProps {
 export function TicketForm({ initialLocation }: TicketFormProps) {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  
+
   const form = useForm({
     resolver: zodResolver(insertTicketSchema),
     defaultValues: {
@@ -29,6 +30,13 @@ export function TicketForm({ initialLocation }: TicketFormProps) {
       images: [],
     },
   });
+
+  // Add this useEffect to update the location field when initialLocation changes
+  useEffect(() => {
+    if (initialLocation) {
+      form.setValue('location', initialLocation);
+    }
+  }, [initialLocation, form]);
 
   const createTicketMutation = useMutation({
     mutationFn: async (data: FormData) => {
@@ -90,7 +98,7 @@ export function TicketForm({ initialLocation }: TicketFormProps) {
             <FormItem>
               <FormLabel>Description</FormLabel>
               <FormControl>
-                <Textarea 
+                <Textarea
                   placeholder="Please describe the issue in detail..."
                   {...field}
                 />
@@ -158,8 +166,8 @@ export function TicketForm({ initialLocation }: TicketFormProps) {
           )}
         />
 
-        <Button 
-          type="submit" 
+        <Button
+          type="submit"
           className="w-full"
           disabled={createTicketMutation.isPending}
         >

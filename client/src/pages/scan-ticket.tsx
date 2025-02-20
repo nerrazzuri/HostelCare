@@ -4,10 +4,16 @@ import { TicketForm } from "@/components/ticket-form";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useLocation } from "wouter";
+import { useState } from "react";
 
 export default function ScanTicket() {
-  const { location } = useParams();
+  const { location: paramLocation } = useParams();
   const [, setLocation] = useLocation();
+  const [scannedLocation, setScannedLocation] = useState<string | undefined>(paramLocation);
+
+  const handleLocationScanned = (location: string) => {
+    setScannedLocation(location);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -33,8 +39,8 @@ export default function ScanTicket() {
           </div>
 
           <div className="grid gap-8">
-            <QRScanner />
-            <TicketForm initialLocation={location} />
+            <QRScanner onLocationScanned={handleLocationScanned} />
+            <TicketForm initialLocation={scannedLocation} />
           </div>
         </div>
       </main>
