@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import WardenDashboard from "@/pages/warden-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
+import AnalyticsDashboard from "@/pages/analytics-dashboard";
 import CreateTicket from "@/pages/create-ticket";
 import QRCodeManagement from "@/pages/qr-code-management";
 import VendorManagement from "@/pages/vendor-management";
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/ticket/create/:location" component={CreateTicket} />
       <ProtectedRoute path="/warden" component={WardenDashboard} />
       <ProtectedRoute path="/admin" component={AdminDashboard} />
+      <ProtectedRoute path="/analytics" component={AnalyticsDashboard} />
       <ProtectedRoute path="/qr-management" component={QRCodeManagement} />
       <ProtectedRoute path="/vendor-management" component={VendorManagement} />
       <Route component={NotFound} />
