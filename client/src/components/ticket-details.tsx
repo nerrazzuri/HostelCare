@@ -57,8 +57,8 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
   });
 
   return (
-    <Sheet open={open} onOpenChange={() => onClose()} closeButton={false}>
-      <SheetContent className="w-[500px] sm:w-[600px] overflow-y-auto border-l">
+    <Sheet open={open} onOpenChange={() => onClose()}>
+      <SheetContent side="right" className="w-[500px] sm:w-[600px] overflow-y-auto border-l" closeButton={false}>
         <SheetHeader className="space-y-4 pb-4 border-b">
           <div className="flex justify-between items-start pr-4">
             <div>
