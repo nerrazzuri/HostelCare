@@ -1,7 +1,7 @@
 import { IStorage } from "./types";
 import { User, Ticket, TicketUpdate, InsertUser, Vendor, InsertVendor, users, tickets, ticketUpdates, vendors } from "@shared/schema";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -61,12 +61,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTickets(user: User): Promise<Ticket[]> {
+    if (!user) {
+      return [];
+    }
     switch (user.role) {
       case 'tenant':
         return db.select().from(tickets).where(eq(tickets.createdBy, user.id));
       case 'warden':
         return db.select().from(tickets).where(eq(tickets.assignedTo, user.id));
       case 'admin':
+        // For admin, return all tickets without any filtering
         return db.select().from(tickets);
       default:
         return [];
@@ -92,13 +96,13 @@ export class DatabaseStorage implements IStorage {
     return ticket;
   }
 
+  async getTicketUpdates(ticketId: number): Promise<TicketUpdate[]> {
+    return db.select().from(ticketUpdates).where(eq(ticketUpdates.ticketId, ticketId));
+  }
+
   async createTicketUpdate(data: Partial<TicketUpdate>): Promise<TicketUpdate> {
     const [update] = await db.insert(ticketUpdates).values(data).returning();
     return update;
-  }
-
-  async getTicketUpdates(ticketId: number): Promise<TicketUpdate[]> {
-    return db.select().from(ticketUpdates).where(eq(ticketUpdates.ticketId, ticketId));
   }
 }
 
