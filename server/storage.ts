@@ -1,5 +1,5 @@
 import { IStorage } from "./types";
-import { User, Ticket, TicketUpdate, InsertUser, users, tickets, ticketUpdates } from "@shared/schema";
+import { User, Ticket, TicketUpdate, InsertUser, Vendor, InsertVendor, users, tickets, ticketUpdates, vendors } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
 import session from "express-session";
@@ -35,6 +35,29 @@ export class DatabaseStorage implements IStorage {
 
   async getWardens(): Promise<User[]> {
     return db.select().from(users).where(eq(users.role, 'warden'));
+  }
+
+  async getVendors(): Promise<Vendor[]> {
+    return db.select().from(vendors);
+  }
+
+  async getVendor(id: number): Promise<Vendor | undefined> {
+    const [vendor] = await db.select().from(vendors).where(eq(vendors.id, id));
+    return vendor;
+  }
+
+  async createVendor(insertVendor: InsertVendor): Promise<Vendor> {
+    const [vendor] = await db.insert(vendors).values(insertVendor).returning();
+    return vendor;
+  }
+
+  async updateVendor(id: number, updates: Partial<Vendor>): Promise<Vendor> {
+    const [vendor] = await db
+      .update(vendors)
+      .set(updates)
+      .where(eq(vendors.id, id))
+      .returning();
+    return vendor;
   }
 
   async getTickets(user: User): Promise<Ticket[]> {

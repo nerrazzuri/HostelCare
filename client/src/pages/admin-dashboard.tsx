@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { TicketList } from "@/components/ticket-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut, QrCode } from "lucide-react";
+import { LogOut, QrCode, Store } from "lucide-react";
 import { useLocation } from "wouter";
 
 export default function AdminDashboard() {
@@ -17,6 +17,13 @@ export default function AdminDashboard() {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">Admin Dashboard</h1>
           <div className="flex items-center gap-4">
+            <Button 
+              variant="outline"
+              onClick={() => setLocation("/vendor-management")}
+            >
+              <Store className="mr-2 h-4 w-4" />
+              Manage Vendors
+            </Button>
             <Button 
               variant="outline"
               onClick={() => setLocation("/qr-management")}

@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { TicketStatus, insertTicketSchema, insertTicketUpdateSchema } from "@shared/schema";
+import { TicketStatus, insertTicketSchema, insertTicketUpdateSchema, insertVendorSchema } from "@shared/schema";
 import multer from "multer";
 import { z } from "zod";
 
@@ -54,8 +54,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/tickets/:id", requireRole(["admin", "warden"]), async (req, res) => {
     const ticketId = parseInt(req.params.id);
     const updateSchema = z.object({
-      status: z.enum(["open", "assigned", "in_progress", "needs_vendor", "escalated", "resolved"] as const),
+      status: z.enum(Object.values(TicketStatus)),
       assignedTo: z.number().optional(),
+      vendorId: z.number().optional(),
     });
 
     const updates = updateSchema.parse(req.body);
@@ -78,6 +79,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     const update = await storage.createTicketUpdate(updateData);
     res.status(201).json(update);
+  });
+
+  // Vendors
+  app.get("/api/vendors", requireRole(["admin", "warden"]), async (req, res) => {
+    const vendors = await storage.getVendors();
+    res.json(vendors);
+  });
+
+  app.post("/api/vendors", requireRole(["admin"]), async (req, res) => {
+    const vendorData = insertVendorSchema.parse(req.body);
+    const vendor = await storage.createVendor(vendorData);
+    res.status(201).json(vendor);
+  });
+
+  app.patch("/api/vendors/:id", requireRole(["admin"]), async (req, res) => {
+    const vendorId = parseInt(req.params.id);
+    const updateSchema = insertVendorSchema.partial();
+    const updates = updateSchema.parse(req.body);
+    const vendor = await storage.updateVendor(vendorId, updates);
+    res.json(vendor);
   });
 
   // Add endpoint to get wardens for admin

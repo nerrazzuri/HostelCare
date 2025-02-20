@@ -13,6 +13,8 @@ export const TicketStatus = {
   ASSIGNED: 'assigned',
   IN_PROGRESS: 'in_progress',
   NEEDS_VENDOR: 'needs_vendor',
+  VENDOR_ASSIGNED: 'vendor_assigned',
+  VENDOR_IN_PROGRESS: 'vendor_in_progress',
   ESCALATED: 'escalated',
   RESOLVED: 'resolved'
 } as const;
@@ -36,6 +38,16 @@ export const users = pgTable("users", {
   hostelBlock: text("hostel_block"),
 });
 
+export const vendors = pgTable("vendors", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  specialization: text("specialization").notNull(),
+  contactNumber: text("contact_number").notNull(),
+  email: text("email"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const tickets = pgTable("tickets", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
@@ -46,6 +58,7 @@ export const tickets = pgTable("tickets", {
   images: text("images").array(),
   createdBy: integer("created_by").notNull().references(() => users.id),
   assignedTo: integer("assigned_to").references(() => users.id),
+  vendorId: integer("vendor_id").references(() => vendors.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -66,6 +79,14 @@ export const insertUserSchema = createInsertSchema(users).pick({
   hostelBlock: true,
 });
 
+export const insertVendorSchema = createInsertSchema(vendors).pick({
+  name: true,
+  specialization: true,
+  contactNumber: true,
+  email: true,
+  isActive: true,
+});
+
 export const insertTicketSchema = createInsertSchema(tickets).pick({
   title: true,
   description: true,
@@ -81,6 +102,8 @@ export const insertTicketUpdateSchema = createInsertSchema(ticketUpdates).pick({
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type InsertVendor = z.infer<typeof insertVendorSchema>;
 export type User = typeof users.$inferSelect;
+export type Vendor = typeof vendors.$inferSelect;
 export type Ticket = typeof tickets.$inferSelect;
 export type TicketUpdate = typeof ticketUpdates.$inferSelect;

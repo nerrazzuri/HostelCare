@@ -10,6 +10,7 @@ import WardenDashboard from "@/pages/warden-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
 import ScanTicket from "@/pages/scan-ticket";
 import QRCodeManagement from "@/pages/qr-code-management";
+import VendorManagement from "@/pages/vendor-management";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
@@ -26,6 +27,7 @@ function Router() {
       <ProtectedRoute path="/admin" component={AdminDashboard} />
       <ProtectedRoute path="/scan/:location" component={ScanTicket} />
       <ProtectedRoute path="/qr-management" component={QRCodeManagement} />
+      <ProtectedRoute path="/vendor-management" component={VendorManagement} />
       <Route component={NotFound} />
     </Switch>
   );
