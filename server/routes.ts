@@ -22,18 +22,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Tickets
   app.post("/api/tickets", upload.array("images"), async (req, res) => {
-    if (!req.user) return res.sendStatus(401);
-
     const files = req.files as Express.Multer.File[] | undefined;
 
-    const ticketData = insertTicketSchema.parse({
-      ...req.body,
-      images: files?.map(f => f.path) || [],
-      createdBy: req.user.id
-    });
+    try {
+      const ticketData = insertTicketSchema.parse({
+        ...req.body,
+        images: files?.map(f => f.path) || [],
+        // Set a default priority if not provided
+        priority: req.body.priority || 'medium'
+      });
 
-    const ticket = await storage.createTicket(ticketData);
-    res.status(201).json(ticket);
+      // Create ticket without requiring user authentication
+      const ticket = await storage.createTicket({
+        ...ticketData,
+        status: TicketStatus.OPEN,
+        createdBy: 0, // Use 0 or another sentinel value for anonymous submissions
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      res.status(201).json(ticket);
+    } catch (error) {
+      console.error('Ticket creation error:', error);
+      res.status(400).json({ message: 'Invalid ticket data', error });
+    }
   });
 
   app.get("/api/tickets", async (req, res) => {

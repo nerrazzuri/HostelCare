@@ -46,12 +46,12 @@ export function TicketForm({ initialLocation }: TicketFormProps) {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tickets"] });
       toast({
         title: "Success",
-        description: "Ticket created successfully",
+        description: "Your maintenance request has been submitted successfully. The hostel staff will look into it.",
       });
-      setLocation("/tenant");
+      form.reset();
+      setLocation("/scan");
     },
     onError: (error: Error) => {
       toast({
@@ -78,7 +78,6 @@ export function TicketForm({ initialLocation }: TicketFormProps) {
     formData.append("location", data.location);
     formData.append("priority", data.priority);
 
-    // Append each image file
     imageFiles.forEach((file) => {
       formData.append("images", file);
     });
@@ -128,9 +127,9 @@ export function TicketForm({ initialLocation }: TicketFormProps) {
               <FormLabel>Location</FormLabel>
               <FormControl>
                 <div className="relative">
-                  <Input 
-                    {...field} 
-                    readOnly 
+                  <Input
+                    {...field}
+                    readOnly
                     disabled
                     className="bg-muted"
                     placeholder="Scan QR code to set location"
