@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { Button } from "./button";
-import { ImagePlus, X } from "lucide-react";
+import { ImagePlus, Camera, X } from "lucide-react";
 
 interface ImageUploadProps {
   onChange: (files: File[]) => void;
@@ -26,6 +26,17 @@ export function ImageUpload({ onChange, maxFiles = 3, value }: ImageUploadProps)
     },
     [maxFiles, onChange, previews.length]
   );
+
+  const handleCameraCapture = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment'; // Use the back camera by default
+    input.multiple = false;
+
+    input.onchange = (e) => handleFileChange(e as React.ChangeEvent<HTMLInputElement>);
+    input.click();
+  }, [handleFileChange]);
 
   const removeImage = useCallback(
     (index: number) => {
@@ -55,25 +66,34 @@ export function ImageUpload({ onChange, maxFiles = 3, value }: ImageUploadProps)
           </div>
         ))}
         {previews.length < maxFiles && (
-          <Button
-            variant="outline"
-            className="relative aspect-square"
-            onClick={() => document.getElementById("image-upload")?.click()}
-          >
-            <ImagePlus className="h-6 w-6" />
-            <input
-              id="image-upload"
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={handleFileChange}
-            />
-          </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              className="relative aspect-square"
+              onClick={() => document.getElementById("image-upload")?.click()}
+            >
+              <ImagePlus className="h-6 w-6" />
+              <input
+                id="image-upload"
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleFileChange}
+              />
+            </Button>
+            <Button
+              variant="outline"
+              className="relative aspect-square"
+              onClick={handleCameraCapture}
+            >
+              <Camera className="h-6 w-6" />
+            </Button>
+          </div>
         )}
       </div>
       <p className="text-sm text-muted-foreground">
-        Upload up to {maxFiles} images (PNG, JPG up to 5MB each)
+        Take photos or upload images (Up to {maxFiles} images)
       </p>
     </div>
   );
