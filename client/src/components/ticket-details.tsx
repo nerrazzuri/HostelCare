@@ -7,7 +7,7 @@ import { Ticket, TicketStatus, User, Vendor } from "@shared/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Clock, MapPin, Store, X, Check } from "lucide-react";
+import { Clock, MapPin, Store, AlertCircle } from "lucide-react";
 import { TicketUpdates } from "./ticket-updates";
 import { TicketUpdateForm } from "./ticket-update-form";
 import { Separator } from "@/components/ui/separator";
@@ -21,8 +21,9 @@ interface TicketDetailsProps {
 
 const statusColors: Record<string, string> = {
   open: "bg-blue-500/10 text-blue-500",
-  in_progress: "bg-yellow-500/10 text-yellow-500",
+  in_progress: "bg-purple-500/10 text-purple-500",
   needs_vendor: "bg-orange-500/10 text-orange-500",
+  vendor_assigned: "bg-yellow-500/10 text-yellow-500",
   pending_approval: "bg-yellow-500/10 text-yellow-500",
   resolved: "bg-green-500/10 text-green-500",
   cancelled: "bg-red-500/10 text-red-500",
@@ -34,10 +35,6 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
   const [showVendorSelect, setShowVendorSelect] = useState(false);
   const [selectedWardenId, setSelectedWardenId] = useState<string>("");
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
-  const [selectedVendorAction, setSelectedVendorAction] = useState<string>("");
-  const [selectedResolutionAction, setSelectedResolutionAction] = useState<string>("");
-  const [selectedStatus, setSelectedStatus] = useState<string>("");
-
 
   // Fetch wardens list for admin
   const { data: wardens = [] } = useQuery<User[]>({
@@ -48,7 +45,7 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
   // Fetch vendors list
   const { data: vendors = [] } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
-    enabled: showVendorSelect || (user?.role === "admin" && ticket.status === TicketStatus.NEEDS_VENDOR),
+    enabled: showVendorSelect,
   });
 
   // Get selected vendor if any
@@ -65,6 +62,7 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
         title: "Success",
         description: "Ticket updated successfully",
       });
+      if (showVendorSelect) setShowVendorSelect(false);
     },
     onError: (error: Error) => {
       toast({
@@ -75,11 +73,16 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
     },
   });
 
+  // Admin can assign wardens to open tickets
   const canAssignWarden = user?.role === "admin" && ticket.status === TicketStatus.OPEN;
+
+  // Admin can approve vendor selection
   const canApproveVendor = user?.role === "admin" && ticket.status === TicketStatus.NEEDS_VENDOR;
+
+  // Admin can approve resolution
   const canApproveResolution = user?.role === "admin" && ticket.status === TicketStatus.PENDING_APPROVAL;
 
-  // Admin-specific handlers
+  // Admin handlers
   const handleWardenAssignment = () => {
     if (!selectedWardenId) {
       toast({
@@ -97,57 +100,27 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
     setSelectedWardenId("");
   };
 
-  const handleVendorApproval = () => {
-    if (!selectedVendorAction) {
-      toast({
-        title: "Error",
-        description: "Please select an action",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const handleVendorApproval = (approved: boolean) => {
     updateTicketMutation.mutate({
-      status: selectedVendorAction === "approve" ? TicketStatus.IN_PROGRESS : TicketStatus.IN_PROGRESS,
-      vendorId: selectedVendorAction === "reject" ? null : ticket.vendorId,
+      status: approved ? TicketStatus.VENDOR_ASSIGNED : TicketStatus.IN_PROGRESS,
     });
-    setSelectedVendorAction("");
   };
 
-  const handleResolutionApproval = () => {
-    if (!selectedResolutionAction) {
-      toast({
-        title: "Error",
-        description: "Please select an action",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const handleResolutionApproval = (approved: boolean) => {
     updateTicketMutation.mutate({
-      status: selectedResolutionAction === "approve" ? TicketStatus.RESOLVED : TicketStatus.IN_PROGRESS,
+      status: approved ? TicketStatus.RESOLVED : TicketStatus.IN_PROGRESS,
     });
-    setSelectedResolutionAction("");
   };
 
-  // Warden-specific handlers
-  const handleStatusUpdate = () => {
-    if (!selectedStatus) {
-      toast({
-        title: "Error",
-        description: "Please select a status",
-        variant: "destructive",
-      });
-      return;
-    }
+  // Warden handlers
+  const handleNeedsVendor = () => {
+    setShowVendorSelect(true);
+  };
 
-    if (selectedStatus === TicketStatus.NEEDS_VENDOR) {
-      setShowVendorSelect(true);
-      setSelectedStatus("");
-    } else if (selectedStatus === TicketStatus.PENDING_APPROVAL) {
-      updateTicketMutation.mutate({ status: TicketStatus.PENDING_APPROVAL });
-      setSelectedStatus("");
-    }
+  const handleMarkResolved = () => {
+    updateTicketMutation.mutate({
+      status: TicketStatus.PENDING_APPROVAL,
+    });
   };
 
   const handleVendorSelection = () => {
@@ -165,62 +138,27 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
       status: TicketStatus.NEEDS_VENDOR,
     });
     setSelectedVendorId("");
-    setShowVendorSelect(false);
-  };
-
-  const handleNeedsVendor = () => {
-    setSelectedStatus(TicketStatus.NEEDS_VENDOR);
-    handleStatusUpdate();
-  };
-
-  const handleRequestApproval = () => {
-    setSelectedStatus(TicketStatus.PENDING_APPROVAL);
-    handleStatusUpdate();
-  };
-
-  const handleWardenAssignmentOld = (wardenId: number) => {
-    updateTicketMutation.mutate({
-      assignedTo: wardenId,
-      status: TicketStatus.IN_PROGRESS,
-    });
-  };
-
-  const handleVendorApprovalOld = (approved: boolean) => {
-    updateTicketMutation.mutate({
-      status: approved ? TicketStatus.IN_PROGRESS : TicketStatus.IN_PROGRESS,
-      vendorId: approved ? ticket.vendorId : null,
-    });
-  };
-
-  const handleResolutionApprovalOld = (approved: boolean) => {
-    updateTicketMutation.mutate({
-      status: approved ? TicketStatus.RESOLVED : TicketStatus.IN_PROGRESS,
-    });
   };
 
   return (
     <Sheet open={open} onOpenChange={() => onClose()}>
       <SheetContent side="right" className="w-[500px] sm:w-[600px] overflow-y-auto border-l">
         <SheetHeader className="space-y-4 pb-4 border-b">
-          <div className="flex items-start">
+          <div className="flex items-start justify-between">
             <div>
               <div className="text-sm text-muted-foreground">Ticket #{ticket.id}</div>
               <SheetTitle className="text-xl mt-1">{ticket.title}</SheetTitle>
             </div>
+            <Badge className={statusColors[ticket.status]}>
+              {ticket.status.replace(/_/g, ' ').replace(/\w\S*/g,
+                (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+              )}
+            </Badge>
           </div>
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
           <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground mb-2">Status</h3>
-              <Badge className={statusColors[ticket.status]}>
-                {ticket.status.replace(/_/g, ' ').replace(/\w\S*/g,
-                  (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
-                )}
-              </Badge>
-            </div>
-
             <div>
               <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
               <p className="text-sm">{ticket.description}</p>
@@ -299,25 +237,28 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
                 {canApproveVendor && selectedVendor && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium">Review Vendor Selection</h4>
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        Warden has requested to assign {selectedVendor.name}
+                      </span>
+                    </div>
                     <div className="flex gap-2">
-                      <Select
-                        value={selectedVendorAction}
-                        onValueChange={setSelectedVendorAction}
-                      >
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Choose action" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="approve">Approve Vendor & Start Work</SelectItem>
-                          <SelectItem value="reject">Reject & Request Changes</SelectItem>
-                        </SelectContent>
-                      </Select>
                       <Button
                         variant="outline"
-                        onClick={handleVendorApproval}
-                        disabled={!selectedVendorAction || updateTicketMutation.isPending}
+                        onClick={() => handleVendorApproval(true)}
+                        disabled={updateTicketMutation.isPending}
+                        className="flex-1"
                       >
-                        Submit
+                        Approve Vendor
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => handleVendorApproval(false)}
+                        disabled={updateTicketMutation.isPending}
+                        className="flex-1"
+                      >
+                        Reject
                       </Button>
                     </div>
                   </div>
@@ -327,25 +268,28 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
                 {canApproveResolution && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium">Review Resolution</h4>
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        Warden has marked this ticket as resolved
+                      </span>
+                    </div>
                     <div className="flex gap-2">
-                      <Select
-                        value={selectedResolutionAction}
-                        onValueChange={setSelectedResolutionAction}
-                      >
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Choose action" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="approve">Approve & Close Ticket</SelectItem>
-                          <SelectItem value="reject">Request Changes</SelectItem>
-                        </SelectContent>
-                      </Select>
                       <Button
                         variant="outline"
-                        onClick={handleResolutionApproval}
-                        disabled={!selectedResolutionAction || updateTicketMutation.isPending}
+                        onClick={() => handleResolutionApproval(true)}
+                        disabled={updateTicketMutation.isPending}
+                        className="flex-1"
                       >
-                        Submit
+                        Approve & Close
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => handleResolutionApproval(false)}
+                        disabled={updateTicketMutation.isPending}
+                        className="flex-1"
+                      >
+                        Reject
                       </Button>
                     </div>
                   </div>
@@ -354,35 +298,29 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
             )}
 
             {/* Warden Actions */}
-            {user?.role === "warden" && (
+            {user?.role === "warden" && ticket.status === TicketStatus.IN_PROGRESS && (
               <div className="space-y-4">
                 <h3 className="text-sm font-medium text-muted-foreground">Warden Actions</h3>
 
-                {/* Status Changes */}
-                {ticket.status === TicketStatus.IN_PROGRESS && (
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium">Update Status</h4>
-                    <div className="flex gap-2">
-                      <Select
-                        value={selectedStatus}
-                        onValueChange={setSelectedStatus}
-                      >
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Choose status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={TicketStatus.NEEDS_VENDOR}>Need Vendor</SelectItem>
-                          <SelectItem value={TicketStatus.PENDING_APPROVAL}>Mark as Resolved</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        variant="outline"
-                        onClick={handleStatusUpdate}
-                        disabled={!selectedStatus || updateTicketMutation.isPending}
-                      >
-                        Update
-                      </Button>
-                    </div>
+                {!showVendorSelect && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={handleNeedsVendor}
+                      disabled={updateTicketMutation.isPending}
+                      className="flex-1"
+                    >
+                      <Store className="mr-2 h-4 w-4" />
+                      Need Vendor
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleMarkResolved}
+                      disabled={updateTicketMutation.isPending}
+                      className="flex-1"
+                    >
+                      Mark as Resolved
+                    </Button>
                   </div>
                 )}
 
