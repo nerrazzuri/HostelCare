@@ -22,13 +22,12 @@ const statusColors: Record<string, string> = {
   open: "bg-blue-500/10 text-blue-500",
   in_progress: "bg-yellow-500/10 text-yellow-500",
   needs_vendor: "bg-orange-500/10 text-orange-500",
-  vendor_assigned: "bg-purple-500/10 text-purple-500",
   pending_approval: "bg-yellow-500/10 text-yellow-500",
   resolved: "bg-green-500/10 text-green-500",
   cancelled: "bg-red-500/10 text-red-500",
 };
 
-// Update the getAvailableStatuses function
+// Available status transitions based on current status and role
 const getAvailableStatuses = (currentStatus: string, role: string): string[] => {
   if (role === "warden") {
     switch (currentStatus) {
@@ -55,14 +54,13 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
     enabled: user?.role === "admin" && ticket.status === TicketStatus.OPEN,
   });
 
-  // Fetch vendors list for warden and admin
+  // Fetch vendors list
   const { data: vendors = [] } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
-    enabled: (user?.role === "warden" && showVendorSelect) || 
-            (user?.role === "admin" && ticket.status === TicketStatus.NEEDS_VENDOR),
+    enabled: showVendorSelect || (user?.role === "admin" && ticket.status === TicketStatus.NEEDS_VENDOR),
   });
 
-  // Fetch selected vendor details if any
+  // Get selected vendor if any
   const selectedVendor = vendors.find(v => v.id === ticket.vendorId);
 
   const updateTicketMutation = useMutation({
@@ -91,10 +89,9 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
   const canApproveVendor = user?.role === "admin" && ticket.status === TicketStatus.NEEDS_VENDOR;
   const canApproveResolution = user?.role === "admin" && ticket.status === TicketStatus.PENDING_APPROVAL;
 
-  // Handle status change
+  // Warden-specific handlers
   const handleStatusChange = (newStatus: string) => {
     setSelectedStatus(newStatus);
-
     if (newStatus === TicketStatus.NEEDS_VENDOR) {
       setShowVendorSelect(true);
     } else {
@@ -103,8 +100,7 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
     }
   };
 
-  // Handle vendor assignment
-  const handleVendorAssignment = (vendorId: string) => {
+  const handleVendorSelection = (vendorId: string) => {
     updateTicketMutation.mutate({
       vendorId: parseInt(vendorId),
       status: TicketStatus.NEEDS_VENDOR,
@@ -112,7 +108,7 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
     setShowVendorSelect(false);
   };
 
-  // Handle warden assignment
+  // Admin-specific handlers
   const handleWardenAssignment = (wardenId: string) => {
     updateTicketMutation.mutate({
       assignedTo: parseInt(wardenId),
@@ -120,20 +116,16 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
     });
   };
 
-  // Handle vendor approval by admin
-  const handleVendorApproval = (action: string) => {
-    if (!ticket.vendorId) {
-      toast({
-        title: "Error",
-        description: "No vendor assigned to approve",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const handleVendorApproval = (action: "approve" | "reject") => {
     updateTicketMutation.mutate({
-      status: action === "approve" ? TicketStatus.IN_PROGRESS : TicketStatus.NEEDS_VENDOR,
+      status: action === "approve" ? TicketStatus.IN_PROGRESS : TicketStatus.IN_PROGRESS,
       vendorId: action === "reject" ? null : ticket.vendorId,
+    });
+  };
+
+  const handleResolutionApproval = (action: "approve" | "reject") => {
+    updateTicketMutation.mutate({
+      status: action === "approve" ? TicketStatus.RESOLVED : TicketStatus.IN_PROGRESS,
     });
   };
 
@@ -198,156 +190,123 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
               </div>
             )}
 
-            {(user?.role === "admin" || user?.role === "warden") && (
-              <div className="space-y-4">
-                <h3 className="text-sm font-medium text-muted-foreground">Manage Ticket</h3>
-                <div className="flex flex-col gap-4">
-                  {/* Admin Specific Actions */}
-                  {user?.role === "admin" && (
-                    <>
-                      {/* Warden Assignment */}
-                      {canAssignWarden && (
-                        <Select onValueChange={handleWardenAssignment}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Assign to warden" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {wardens.map((warden) => (
-                              <SelectItem key={warden.id} value={warden.id.toString()}>
-                                {warden.username}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-
-                      {/* Vendor Approval or Modification */}
-                      {canApproveVendor && (
-                        <div className="space-y-4">
-                          {selectedVendor && (
-                            <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted">
-                              <Store className="h-4 w-4 text-muted-foreground" />
-                              <div>
-                                <div className="font-medium">{selectedVendor.name}</div>
-                                <div className="text-sm text-muted-foreground">
-                                  {selectedVendor.specialization}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          <Select
-                            onValueChange={handleVendorAssignment}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Modify vendor (optional)" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {vendors
-                                .filter((v) => v.isActive)
-                                .map((vendor) => (
-                                  <SelectItem key={vendor.id} value={vendor.id.toString()}>
-                                    <div className="flex items-center gap-2">
-                                      <Store className="h-4 w-4" />
-                                      <span>{vendor.name}</span>
-                                      <span className="text-muted-foreground">
-                                        ({vendor.specialization})
-                                      </span>
-                                    </div>
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-
-                          <Select
-                            onValueChange={handleVendorApproval}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Review vendor selection" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="approve">Approve Vendor & Start Work</SelectItem>
-                              <SelectItem value="reject">Reject & Request New Vendor</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
-                      {/* Resolution Approval */}
-                      {canApproveResolution && (
-                        <Select
-                          onValueChange={(action) =>
-                            updateTicketMutation.mutate({
-                              status: action === "approve" 
-                                ? TicketStatus.RESOLVED 
-                                : TicketStatus.IN_PROGRESS
-                            })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Review resolution" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="approve">Approve Resolution</SelectItem>
-                            <SelectItem value="reject">Request Changes</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </>
-                  )}
-
-                  {/* Warden Actions */}
-                  {user?.role === "warden" && (
-                    <>
-                      {/* Status Changes */}
-                      {availableStatuses.length > 0 && (
-                        <Select
-                          value={selectedStatus}
-                          onValueChange={handleStatusChange}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Update status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableStatuses.map((status) => (
-                              <SelectItem key={status} value={status}>
-                                {status.replace(/_/g, ' ').replace(/\w\S*/g, 
-                                  (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
-                                )}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-
-                      {/* Vendor Selection */}
-                      {showVendorSelect && (
-                        <Select
-                          onValueChange={handleVendorAssignment}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select vendor" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {vendors
-                              .filter((v) => v.isActive)
-                              .map((vendor) => (
-                                <SelectItem key={vendor.id} value={vendor.id.toString()}>
-                                  <div className="flex items-center gap-2">
-                                    <Store className="h-4 w-4" />
-                                    <span>{vendor.name}</span>
-                                    <span className="text-muted-foreground">
-                                      ({vendor.specialization})
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </>
-                  )}
+            {/* Selected Vendor Info (if any) */}
+            {selectedVendor && (
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Assigned Vendor</h3>
+                <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted">
+                  <Store className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <div className="font-medium">{selectedVendor.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {selectedVendor.specialization}
+                    </div>
+                  </div>
                 </div>
+              </div>
+            )}
+
+            {/* Admin Actions */}
+            {user?.role === "admin" && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-muted-foreground">Admin Actions</h3>
+
+                {/* Warden Assignment */}
+                {canAssignWarden && (
+                  <Select onValueChange={handleWardenAssignment}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Assign to warden" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {wardens.map((warden) => (
+                        <SelectItem key={warden.id} value={warden.id.toString()}>
+                          {warden.username}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {/* Vendor Approval */}
+                {canApproveVendor && (
+                  <Select onValueChange={handleVendorApproval}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Review vendor selection" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="approve">Approve Vendor & Start Work</SelectItem>
+                      <SelectItem value="reject">Reject & Request Changes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {/* Resolution Approval */}
+                {canApproveResolution && (
+                  <Select onValueChange={handleResolutionApproval}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Review resolution" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="approve">Approve & Close Ticket</SelectItem>
+                      <SelectItem value="reject">Request Changes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
+
+            {/* Warden Actions */}
+            {user?.role === "warden" && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-muted-foreground">Update Status</h3>
+
+                {/* Status Changes */}
+                {availableStatuses.length > 0 && (
+                  <Select
+                    value={selectedStatus}
+                    onValueChange={handleStatusChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Update status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableStatuses.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {status.replace(/_/g, ' ').replace(/\w\S*/g, 
+                            (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+                          )}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {/* Vendor Selection */}
+                {showVendorSelect && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-muted-foreground">Select Vendor</h3>
+                    <Select onValueChange={handleVendorSelection}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a vendor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {vendors
+                          .filter((v) => v.isActive)
+                          .map((vendor) => (
+                            <SelectItem key={vendor.id} value={vendor.id.toString()}>
+                              <div className="flex items-center gap-2">
+                                <Store className="h-4 w-4" />
+                                <span>{vendor.name}</span>
+                                <span className="text-muted-foreground">
+                                  ({vendor.specialization})
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             )}
           </div>
