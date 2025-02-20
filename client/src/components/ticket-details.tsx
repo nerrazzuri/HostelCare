@@ -7,6 +7,9 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Clock, MapPin, User as UserIcon } from "lucide-react";
+import { TicketUpdates } from "./ticket-updates";
+import { TicketUpdateForm } from "./ticket-update-form";
+import { Separator } from "@/components/ui/separator";
 
 interface TicketDetailsProps {
   ticket: Ticket;
@@ -148,6 +151,15 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
                   </Select>
                 )}
               </div>
+            </div>
+          </div>
+          <Separator className="my-6" />
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Updates</h3>
+            <TicketUpdateForm ticketId={ticket.id} />
+            <div className="mt-6">
+              <TicketUpdates ticketId={ticket.id} />
             </div>
           </div>
         </div>
