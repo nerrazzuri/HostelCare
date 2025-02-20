@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Ticket, TicketStatus, User } from "@shared/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -55,12 +53,13 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
   });
 
   return (
-    <Dialog open={open} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Ticket Details</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-6">
+    <Sheet open={open} onOpenChange={() => onClose()}>
+      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Ticket Details</SheetTitle>
+        </SheetHeader>
+
+        <div className="mt-6 space-y-6">
           <div className="flex justify-between items-start">
             <h2 className="text-2xl font-bold">{ticket.title}</h2>
             <Badge className={statusColors[ticket.status]}>
@@ -107,7 +106,7 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
 
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Manage Ticket</h3>
-              <div className="flex gap-4">
+              <div className="flex flex-col gap-4">
                 <Select
                   value={selectedStatus}
                   onValueChange={(status) => {
@@ -115,7 +114,7 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
                     updateTicketMutation.mutate({ status });
                   }}
                 >
-                  <SelectTrigger className="w-[200px]">
+                  <SelectTrigger>
                     <SelectValue placeholder="Update status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -136,7 +135,7 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
                       })
                     }
                   >
-                    <SelectTrigger className="w-[200px]">
+                    <SelectTrigger>
                       <SelectValue placeholder="Assign warden" />
                     </SelectTrigger>
                     <SelectContent>
@@ -152,7 +151,7 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
             </div>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -1,15 +1,13 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Ticket, TicketStatus, User } from "@shared/schema";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle, Clock, Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { TicketDetails } from "./ticket-details";
 
 interface TicketListProps {
@@ -40,27 +38,6 @@ export function TicketList({ filter }: TicketListProps) {
     enabled: user?.role === "admin",
   });
 
-  const updateTicketMutation = useMutation({
-    mutationFn: async ({ id, updates }: { id: number; updates: Partial<Ticket> }) => {
-      const res = await apiRequest("PATCH", `/api/tickets/${id}`, updates);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tickets"] });
-      toast({
-        title: "Success",
-        description: "Ticket updated successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
   let filteredTickets = tickets;
   if (filter === "unassigned") {
     filteredTickets = tickets.filter(t => !t.assignedTo);
@@ -84,10 +61,10 @@ export function TicketList({ filter }: TicketListProps) {
 
   if (filteredTickets.length === 0) {
     return (
-      <Card className="text-center p-8">
+      <div className="text-center p-8">
         <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" />
         <p className="mt-4 text-lg font-medium">No tickets found</p>
-      </Card>
+      </div>
     );
   }
 
@@ -105,32 +82,39 @@ export function TicketList({ filter }: TicketListProps) {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredTickets.map((ticket) => (
-          <Card 
-            key={ticket.id}
-            className="cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => setSelectedTicket(ticket)}
-          >
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <CardTitle className="text-lg">{ticket.title}</CardTitle>
-                <Badge className={statusColors[ticket.status]}>
-                  {ticket.status}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                {ticket.description}
-              </p>
-              <div className="flex items-center text-sm text-muted-foreground">
-                <Clock className="mr-2 h-4 w-4" />
-                {new Date(ticket.createdAt).toLocaleDateString()}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Title</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Priority</TableHead>
+              <TableHead>Location</TableHead>
+              <TableHead>Created</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredTickets.map((ticket) => (
+              <TableRow 
+                key={ticket.id}
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => setSelectedTicket(ticket)}
+              >
+                <TableCell className="font-medium">{ticket.title}</TableCell>
+                <TableCell>
+                  <Badge className={statusColors[ticket.status]}>
+                    {ticket.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="capitalize">{ticket.priority}</TableCell>
+                <TableCell>{ticket.location}</TableCell>
+                <TableCell>
+                  {new Date(ticket.createdAt).toLocaleDateString()}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
 
       {selectedTicket && (
