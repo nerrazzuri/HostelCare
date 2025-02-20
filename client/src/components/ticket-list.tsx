@@ -42,18 +42,32 @@ export function TicketList({ filter }: TicketListProps) {
     // For all other views, exclude resolved tickets
     filteredTickets = tickets.filter(t => t.status !== TicketStatus.RESOLVED);
 
-    // Then apply specific filters
-    if (filter === "unassigned") {
-      filteredTickets = filteredTickets.filter(t => !t.assignedTo);
-    } else if (filter === "escalated") {
-      filteredTickets = filteredTickets.filter(t => t.status === TicketStatus.ESCALATED);
+    // Then apply role-specific filters
+    if (user?.role === "warden") {
+      // For wardens, only show tickets assigned to them
+      filteredTickets = filteredTickets.filter(t => t.assignedTo === user.id);
+
+      // Apply warden-specific filters
+      if (filter === "needs_vendor") {
+        filteredTickets = filteredTickets.filter(t =>
+          t.status === TicketStatus.NEEDS_VENDOR ||
+          t.status === TicketStatus.VENDOR_ASSIGNED
+        );
+      }
+    } else {
+      // Admin filters
+      if (filter === "unassigned") {
+        filteredTickets = filteredTickets.filter(t => !t.assignedTo);
+      } else if (filter === "escalated") {
+        filteredTickets = filteredTickets.filter(t => t.status === TicketStatus.ESCALATED);
+      }
     }
   }
 
   // Apply search filter
   if (searchQuery) {
     const query = searchQuery.toLowerCase();
-    filteredTickets = filteredTickets.filter(ticket => 
+    filteredTickets = filteredTickets.filter(ticket =>
       ticket.title.toLowerCase().includes(query) ||
       ticket.description.toLowerCase().includes(query) ||
       ticket.location.toLowerCase().includes(query)
@@ -106,7 +120,7 @@ export function TicketList({ filter }: TicketListProps) {
           </TableHeader>
           <TableBody>
             {filteredTickets.map((ticket) => (
-              <TableRow 
+              <TableRow
                 key={ticket.id}
                 className="cursor-pointer hover:bg-muted/50"
                 onClick={() => setSelectedTicket(ticket)}

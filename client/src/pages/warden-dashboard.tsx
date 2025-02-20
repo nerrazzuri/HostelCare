@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { TicketList } from "@/components/ticket-list";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LogOut } from "lucide-react";
 
 export default function WardenDashboard() {
@@ -11,7 +12,7 @@ export default function WardenDashboard() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+        <div className="max-w-[95%] mx-auto px-2 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">Warden Dashboard</h1>
           <Button 
             variant="ghost" 
@@ -23,15 +24,26 @@ export default function WardenDashboard() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="max-w-[95%] mx-auto px-2 py-8">
         <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-2">Assigned Tickets</h2>
+          <h2 className="text-xl font-semibold mb-2">My Assigned Tickets</h2>
           <p className="text-muted-foreground">
-            Manage and update the status of assigned maintenance requests
+            Manage maintenance requests and coordinate with vendors when needed
           </p>
         </div>
 
-        <TicketList />
+        <Tabs defaultValue="active" className="w-full">
+          <TabsList>
+            <TabsTrigger value="active">Active Tickets</TabsTrigger>
+            <TabsTrigger value="vendor">Vendor Required</TabsTrigger>
+          </TabsList>
+          <TabsContent value="active">
+            <TicketList filter="active" />
+          </TabsContent>
+          <TabsContent value="vendor">
+            <TicketList filter="needs_vendor" />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
