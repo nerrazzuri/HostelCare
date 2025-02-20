@@ -11,15 +11,17 @@ import { useAuth } from "@/hooks/use-auth";
 import { insertUserSchema, UserRole } from "@shared/schema";
 import { useLocation } from "wouter";
 import { Building2 } from "lucide-react";
+import { useEffect } from "react";
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
   const [, setLocation] = useLocation();
 
-  if (user) {
-    setLocation(`/${user.role}`);
-    return null;
-  }
+  useEffect(() => {
+    if (user) {
+      setLocation(`/${user.role}`);
+    }
+  }, [user, setLocation]);
 
   const loginForm = useForm({
     defaultValues: {
@@ -37,6 +39,10 @@ export default function AuthPage() {
       hostelBlock: "",
     },
   });
+
+  if (user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
