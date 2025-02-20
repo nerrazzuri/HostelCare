@@ -8,10 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/hooks/use-auth";
-import { insertUserSchema, UserRole } from "@shared/schema";
 import { useLocation } from "wouter";
 import { Building2 } from "lucide-react";
 import { useEffect } from "react";
+import { insertUserSchema, UserRole } from "@shared/schema";
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
@@ -19,7 +19,13 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (user) {
-      setLocation(`/${user.role}`);
+      // For tenants, go directly to scan ticket page
+      if (user.role === 'tenant') {
+        setLocation('/scan');
+      } else {
+        // For other roles (admin/warden), go to their dashboard
+        setLocation(`/${user.role}`);
+      }
     }
   }, [user, setLocation]);
 
