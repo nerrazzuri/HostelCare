@@ -23,10 +23,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Tickets
   app.post("/api/tickets", upload.array("images"), async (req, res) => {
     if (!req.user) return res.sendStatus(401);
-    
+
+    const files = req.files as Express.Multer.File[] | undefined;
+
     const ticketData = insertTicketSchema.parse({
       ...req.body,
-      images: (req.files as Express.Multer.File[])?.map(f => f.path) || [],
+      images: files?.map(f => f.path) || [],
       createdBy: req.user.id
     });
 
@@ -36,14 +38,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/tickets", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
-    
+
     const tickets = await storage.getTickets(req.user);
     res.json(tickets);
   });
 
   app.get("/api/tickets/:id", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
-    
+
     const ticket = await storage.getTicket(parseInt(req.params.id));
     if (!ticket) return res.sendStatus(404);
     res.json(ticket);
@@ -52,7 +54,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/tickets/:id", requireRole(["admin", "warden"]), async (req, res) => {
     const ticketId = parseInt(req.params.id);
     const updateSchema = z.object({
-      status: z.enum(Object.values(TicketStatus)),
+      status: z.enum(["open", "assigned", "in_progress", "needs_vendor", "escalated", "resolved"] as const),
       assignedTo: z.number().optional(),
     });
 
@@ -63,17 +65,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/tickets/:id/updates", upload.array("images"), async (req, res) => {
     if (!req.user) return res.sendStatus(401);
-    
+
     const ticketId = parseInt(req.params.id);
+    const files = req.files as Express.Multer.File[] | undefined;
+
     const updateData = insertTicketUpdateSchema.parse({
       ...req.body,
       ticketId,
-      images: (req.files as Express.Multer.File[])?.map(f => f.path) || [],
+      images: files?.map(f => f.path) || [],
       createdBy: req.user.id
     });
 
     const update = await storage.createTicketUpdate(updateData);
     res.status(201).json(update);
+  });
+
+  // Add endpoint to get wardens for admin
+  app.get("/api/users/wardens", requireRole(["admin"]), async (req, res) => {
+    const wardens = await storage.getWardens();
+    res.json(wardens);
   });
 
   const httpServer = createServer(app);

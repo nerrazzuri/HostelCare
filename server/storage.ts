@@ -1,114 +1,82 @@
 import { IStorage } from "./types";
-import { User, Ticket, TicketUpdate, InsertUser, UserRole } from "@shared/schema";
+import { User, Ticket, TicketUpdate, InsertUser, users, tickets, ticketUpdates } from "@shared/schema";
+import { db } from "./db";
+import { eq, and } from "drizzle-orm";
 import session from "express-session";
-import createMemoryStore from "memorystore";
+import connectPg from "connect-pg-simple";
+import { pool } from "./db";
 
-const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private tickets: Map<number, Ticket>;
-  private ticketUpdates: Map<number, TicketUpdate[]>;
-  private currentUserId: number;
-  private currentTicketId: number;
-  private currentUpdateId: number;
+export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
-    this.users = new Map();
-    this.tickets = new Map();
-    this.ticketUpdates = new Map();
-    this.currentUserId = 1;
-    this.currentTicketId = 1;
-    this.currentUpdateId = 1;
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000,
+    this.sessionStore = new PostgresSessionStore({ 
+      pool, 
+      createTableIfMissing: true 
     });
   }
 
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentUserId++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+
+  async getWardens(): Promise<User[]> {
+    return db.select().from(users).where(eq(users.role, 'warden'));
+  }
+
   async getTickets(user: User): Promise<Ticket[]> {
-    const tickets = Array.from(this.tickets.values());
-    
     switch (user.role) {
-      case UserRole.TENANT:
-        return tickets.filter(t => t.createdBy === user.id);
-      case UserRole.WARDEN:
-        return tickets.filter(t => t.assignedTo === user.id);
-      case UserRole.ADMIN:
-        return tickets;
+      case 'tenant':
+        return db.select().from(tickets).where(eq(tickets.createdBy, user.id));
+      case 'warden':
+        return db.select().from(tickets).where(eq(tickets.assignedTo, user.id));
+      case 'admin':
+        return db.select().from(tickets);
       default:
         return [];
     }
   }
 
   async getTicket(id: number): Promise<Ticket | undefined> {
-    return this.tickets.get(id);
+    const [ticket] = await db.select().from(tickets).where(eq(tickets.id, id));
+    return ticket;
   }
 
   async createTicket(data: Partial<Ticket>): Promise<Ticket> {
-    const id = this.currentTicketId++;
-    const ticket: Ticket = {
-      ...data,
-      id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      status: "open",
-    } as Ticket;
-    
-    this.tickets.set(id, ticket);
-    this.ticketUpdates.set(id, []);
+    const [ticket] = await db.insert(tickets).values(data).returning();
     return ticket;
   }
 
   async updateTicket(id: number, updates: Partial<Ticket>): Promise<Ticket> {
-    const ticket = this.tickets.get(id);
-    if (!ticket) throw new Error("Ticket not found");
-
-    const updatedTicket = {
-      ...ticket,
-      ...updates,
-      updatedAt: new Date(),
-    };
-    
-    this.tickets.set(id, updatedTicket);
-    return updatedTicket;
+    const [ticket] = await db
+      .update(tickets)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(tickets.id, id))
+      .returning();
+    return ticket;
   }
 
   async createTicketUpdate(data: Partial<TicketUpdate>): Promise<TicketUpdate> {
-    const id = this.currentUpdateId++;
-    const update: TicketUpdate = {
-      ...data,
-      id,
-      createdAt: new Date(),
-    } as TicketUpdate;
-
-    const updates = this.ticketUpdates.get(update.ticketId) || [];
-    updates.push(update);
-    this.ticketUpdates.set(update.ticketId, updates);
-    
+    const [update] = await db.insert(ticketUpdates).values(data).returning();
     return update;
   }
 
   async getTicketUpdates(ticketId: number): Promise<TicketUpdate[]> {
-    return this.ticketUpdates.get(ticketId) || [];
+    return db.select().from(ticketUpdates).where(eq(ticketUpdates.ticketId, ticketId));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

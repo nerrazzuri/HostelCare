@@ -24,11 +24,15 @@ export const TicketPriority = {
   URGENT: 'urgent'
 } as const;
 
+type UserRoleType = typeof UserRole[keyof typeof UserRole];
+type TicketStatusType = typeof TicketStatus[keyof typeof TicketStatus];
+type TicketPriorityType = typeof TicketPriority[keyof typeof TicketPriority];
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  role: text("role", { enum: Object.values(UserRole) }).notNull(),
+  role: text("role").notNull().$type<UserRoleType>(),
   hostelBlock: text("hostel_block"),
 });
 
@@ -37,21 +41,21 @@ export const tickets = pgTable("tickets", {
   title: text("title").notNull(),
   description: text("description").notNull(),
   location: text("location").notNull(),
-  status: text("status", { enum: Object.values(TicketStatus) }).notNull().default(TicketStatus.OPEN),
-  priority: text("priority", { enum: Object.values(TicketPriority) }).notNull(),
+  status: text("status").$type<TicketStatusType>().notNull().default(TicketStatus.OPEN),
+  priority: text("priority").$type<TicketPriorityType>().notNull(),
   images: text("images").array(),
-  createdBy: integer("created_by").notNull(),
-  assignedTo: integer("assigned_to"),
+  createdBy: integer("created_by").notNull().references(() => users.id),
+  assignedTo: integer("assigned_to").references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export const ticketUpdates = pgTable("ticket_updates", {
   id: serial("id").primaryKey(),
-  ticketId: integer("ticket_id").notNull(),
+  ticketId: integer("ticket_id").notNull().references(() => tickets.id),
   comment: text("comment").notNull(),
   images: text("images").array(),
-  createdBy: integer("created_by").notNull(),
+  createdBy: integer("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
