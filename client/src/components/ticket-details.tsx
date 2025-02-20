@@ -6,10 +6,11 @@ import { Ticket, TicketStatus, User } from "@shared/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Clock, MapPin, User as UserIcon } from "lucide-react";
+import { Clock, MapPin, User as UserIcon, X } from "lucide-react";
 import { TicketUpdates } from "./ticket-updates";
 import { TicketUpdateForm } from "./ticket-update-form";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 
 interface TicketDetailsProps {
   ticket: Ticket;
@@ -18,12 +19,12 @@ interface TicketDetailsProps {
 }
 
 const statusColors: Record<string, string> = {
-  open: "bg-blue-500",
-  assigned: "bg-yellow-500",
-  in_progress: "bg-purple-500",
-  needs_vendor: "bg-orange-500",
-  escalated: "bg-red-500",
-  resolved: "bg-green-500",
+  open: "bg-blue-500/10 text-blue-500",
+  assigned: "bg-yellow-500/10 text-yellow-500",
+  in_progress: "bg-purple-500/10 text-purple-500",
+  needs_vendor: "bg-orange-500/10 text-orange-500",
+  escalated: "bg-red-500/10 text-red-500",
+  resolved: "bg-green-500/10 text-green-500",
 };
 
 export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
@@ -57,50 +58,60 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
 
   return (
     <Sheet open={open} onOpenChange={() => onClose()}>
-      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Ticket Details</SheetTitle>
+      <SheetContent className="w-[500px] sm:w-[600px] overflow-y-auto border-l">
+        <SheetHeader className="space-y-4 pb-4 border-b">
+          <div className="flex justify-between items-start pr-4">
+            <div>
+              <div className="text-sm text-muted-foreground">Ticket #{ticket.id}</div>
+              <SheetTitle className="text-xl mt-1">{ticket.title}</SheetTitle>
+            </div>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
-          <div className="flex justify-between items-start">
-            <h2 className="text-2xl font-bold">{ticket.title}</h2>
-            <Badge className={statusColors[ticket.status]}>
-              {ticket.status}
-            </Badge>
-          </div>
-
           <div className="space-y-4">
             <div>
-              <h3 className="text-lg font-semibold mb-2">Description</h3>
-              <p className="text-muted-foreground">{ticket.description}</p>
+              <h3 className="text-sm font-medium text-muted-foreground mb-2">Status</h3>
+              <Badge className={statusColors[ticket.status]}>
+                {ticket.status}
+              </Badge>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
+              <p className="text-sm">{ticket.description}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span>{ticket.location}</span>
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Location</h3>
+                <div className="flex items-center gap-2 text-sm">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span>{ticket.location}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <UserIcon className="h-4 w-4 text-muted-foreground" />
-                <span>Priority: {ticket.priority}</span>
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Created</h3>
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
+                </div>
               </div>
             </div>
 
             {ticket.images && ticket.images.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold mb-2">Images</h3>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Images</h3>
                 <div className="grid grid-cols-2 gap-4">
                   {ticket.images.map((image, index) => (
                     <img
                       key={index}
                       src={image}
                       alt={`Ticket image ${index + 1}`}
-                      className="rounded-md object-cover w-full h-48"
+                      className="rounded-md object-cover w-full aspect-video"
                     />
                   ))}
                 </div>
@@ -108,7 +119,7 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
             )}
 
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Manage Ticket</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">Manage Ticket</h3>
               <div className="flex flex-col gap-4">
                 <Select
                   value={selectedStatus}
@@ -153,10 +164,11 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
               </div>
             </div>
           </div>
+
           <Separator className="my-6" />
 
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Updates</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Updates</h3>
             <TicketUpdateForm ticketId={ticket.id} />
             <div className="mt-6">
               <TicketUpdates ticketId={ticket.id} />

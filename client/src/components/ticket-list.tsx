@@ -15,12 +15,12 @@ interface TicketListProps {
 }
 
 const statusColors: Record<string, string> = {
-  open: "bg-blue-500",
-  assigned: "bg-yellow-500",
-  in_progress: "bg-purple-500",
-  needs_vendor: "bg-orange-500",
-  escalated: "bg-red-500",
-  resolved: "bg-green-500",
+  open: "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20",
+  assigned: "bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20",
+  in_progress: "bg-purple-500/10 text-purple-500 hover:bg-purple-500/20",
+  needs_vendor: "bg-orange-500/10 text-orange-500 hover:bg-orange-500/20",
+  escalated: "bg-red-500/10 text-red-500 hover:bg-red-500/20",
+  resolved: "bg-green-500/10 text-green-500 hover:bg-green-500/20",
 };
 
 export function TicketList({ filter }: TicketListProps) {
@@ -56,7 +56,9 @@ export function TicketList({ filter }: TicketListProps) {
   }
 
   if (isLoading) {
-    return <div className="text-center">Loading tickets...</div>;
+    return <div className="flex justify-center py-8">
+      <Clock className="h-8 w-8 animate-spin text-muted-foreground" />
+    </div>;
   }
 
   if (filteredTickets.length === 0) {
@@ -82,15 +84,16 @@ export function TicketList({ filter }: TicketListProps) {
         </div>
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-md border bg-white">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Priority</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Created</TableHead>
+            <TableRow className="bg-muted/50">
+              <TableHead className="font-semibold">ID</TableHead>
+              <TableHead className="font-semibold">Title</TableHead>
+              <TableHead className="font-semibold">Status</TableHead>
+              <TableHead className="font-semibold">Priority</TableHead>
+              <TableHead className="font-semibold">Location</TableHead>
+              <TableHead className="font-semibold">Created</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -100,15 +103,23 @@ export function TicketList({ filter }: TicketListProps) {
                 className="cursor-pointer hover:bg-muted/50"
                 onClick={() => setSelectedTicket(ticket)}
               >
-                <TableCell className="font-medium">{ticket.title}</TableCell>
+                <TableCell className="font-medium">#{ticket.id}</TableCell>
+                <TableCell className="max-w-md">
+                  <div className="font-medium">{ticket.title}</div>
+                  <div className="text-sm text-muted-foreground truncate">
+                    {ticket.description}
+                  </div>
+                </TableCell>
                 <TableCell>
                   <Badge className={statusColors[ticket.status]}>
                     {ticket.status}
                   </Badge>
                 </TableCell>
-                <TableCell className="capitalize">{ticket.priority}</TableCell>
-                <TableCell>{ticket.location}</TableCell>
                 <TableCell>
+                  <span className="capitalize">{ticket.priority}</span>
+                </TableCell>
+                <TableCell>{ticket.location}</TableCell>
+                <TableCell className="text-muted-foreground">
                   {new Date(ticket.createdAt).toLocaleDateString()}
                 </TableCell>
               </TableRow>
