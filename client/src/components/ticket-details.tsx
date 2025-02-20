@@ -20,33 +20,35 @@ interface TicketDetailsProps {
 
 const statusColors: Record<string, string> = {
   open: "bg-blue-500/10 text-blue-500",
-  assigned: "bg-yellow-500/10 text-yellow-500",
-  in_progress: "bg-purple-500/10 text-purple-500",
+  in_progress: "bg-yellow-500/10 text-yellow-500",
   needs_vendor: "bg-orange-500/10 text-orange-500",
-  vendor_assigned: "bg-yellow-500/10 text-yellow-500",
-  vendor_in_progress: "bg-purple-500/10 text-purple-500",
-  escalated: "bg-red-500/10 text-red-500",
+  vendor_assigned: "bg-purple-500/10 text-purple-500",
+  pending_approval: "bg-yellow-500/10 text-yellow-500",
   resolved: "bg-green-500/10 text-green-500",
+  cancelled: "bg-red-500/10 text-red-500",
 };
 
 // Available status transitions based on current status and role
 const getAvailableStatuses = (currentStatus: string, role: string): string[] => {
   if (role === "admin") {
-    return Object.values(TicketStatus);
+    switch (currentStatus) {
+      case TicketStatus.OPEN:
+        return [TicketStatus.IN_PROGRESS, TicketStatus.CANCELLED];
+      case TicketStatus.VENDOR_ASSIGNED:
+        return [TicketStatus.IN_PROGRESS, TicketStatus.CANCELLED];
+      case TicketStatus.PENDING_APPROVAL:
+        return [TicketStatus.RESOLVED, TicketStatus.IN_PROGRESS];
+      default:
+        return [];
+    }
   }
 
   if (role === "warden") {
     switch (currentStatus) {
-      case TicketStatus.ASSIGNED:
-        return [TicketStatus.IN_PROGRESS, TicketStatus.NEEDS_VENDOR];
       case TicketStatus.IN_PROGRESS:
-        return [TicketStatus.RESOLVED, TicketStatus.NEEDS_VENDOR];
+        return [TicketStatus.NEEDS_VENDOR, TicketStatus.PENDING_APPROVAL];
       case TicketStatus.NEEDS_VENDOR:
-        return [TicketStatus.IN_PROGRESS]; // Can revert back to in_progress if vendor not needed
-      case TicketStatus.VENDOR_ASSIGNED:
-        return []; // Waiting for admin approval
-      case TicketStatus.VENDOR_IN_PROGRESS:
-        return [TicketStatus.RESOLVED];
+        return [TicketStatus.IN_PROGRESS]; // Can revert if vendor not needed
       default:
         return [];
     }
@@ -63,7 +65,7 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
 
   const { data: vendors = [] } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
-    enabled: user?.role === "admin" || user?.role === "warden",
+    enabled: user?.role === "warden" || user?.role === "admin",
   });
 
   const updateTicketMutation = useMutation({
@@ -88,8 +90,6 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
   });
 
   const availableStatuses = getAvailableStatuses(ticket.status, user?.role || "");
-  const canAssignVendor = user?.role === "warden" && ticket.status === TicketStatus.NEEDS_VENDOR;
-  const canApproveVendor = user?.role === "admin" && ticket.status === TicketStatus.VENDOR_ASSIGNED;
 
   // Handle status change
   const handleStatusChange = (newStatus: string) => {
@@ -129,7 +129,9 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
             <div>
               <h3 className="text-sm font-medium text-muted-foreground mb-2">Status</h3>
               <Badge className={statusColors[ticket.status]}>
-                {ticket.status}
+                {ticket.status.replace(/_/g, ' ').replace(/\w\S*/g, 
+                  (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+                )}
               </Badge>
             </div>
 
@@ -218,28 +220,6 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
                           ))}
                       </SelectContent>
                     </Select>
-                  )}
-
-                  {canApproveVendor && (
-                    <div className="flex gap-2">
-                      <Select
-                        onValueChange={(action) =>
-                          updateTicketMutation.mutate({
-                            status: action === "approve"
-                              ? TicketStatus.VENDOR_IN_PROGRESS
-                              : TicketStatus.NEEDS_VENDOR
-                          })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Approve vendor assignment" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="approve">Approve Vendor</SelectItem>
-                          <SelectItem value="reject">Reject Vendor</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                   )}
                 </div>
               </div>

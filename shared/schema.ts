@@ -10,13 +10,12 @@ export const UserRole = {
 
 export const TicketStatus = {
   OPEN: 'open',
-  ASSIGNED: 'assigned',
   IN_PROGRESS: 'in_progress',
   NEEDS_VENDOR: 'needs_vendor',
   VENDOR_ASSIGNED: 'vendor_assigned',
-  VENDOR_IN_PROGRESS: 'vendor_in_progress',
-  ESCALATED: 'escalated',
-  RESOLVED: 'resolved'
+  PENDING_APPROVAL: 'pending_approval',
+  RESOLVED: 'resolved',
+  CANCELLED: 'cancelled'
 } as const;
 
 export const TicketPriority = {
