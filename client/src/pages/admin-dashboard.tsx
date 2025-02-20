@@ -2,10 +2,12 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { TicketList } from "@/components/ticket-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut } from "lucide-react";
+import { LogOut, QrCode } from "lucide-react";
+import { useLocation } from "wouter";
 
 export default function AdminDashboard() {
   const { user, logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
 
   if (!user) return null;
 
@@ -14,13 +16,22 @@ export default function AdminDashboard() {
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-          <Button 
-            variant="ghost" 
-            onClick={() => logoutMutation.mutate()}
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
-          </Button>
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="outline"
+              onClick={() => setLocation("/qr-management")}
+            >
+              <QrCode className="mr-2 h-4 w-4" />
+              Manage QR Codes
+            </Button>
+            <Button 
+              variant="ghost" 
+              onClick={() => logoutMutation.mutate()}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </Button>
+          </div>
         </div>
       </header>
 
