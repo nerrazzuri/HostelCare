@@ -2,15 +2,15 @@ import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Ticket, TicketStatus, User } from "@shared/schema";
+import { Ticket, TicketStatus, User, Vendor } from "@shared/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Clock, MapPin, User as UserIcon, X } from "lucide-react";
+import { Clock, MapPin, Store } from "lucide-react";
 import { TicketUpdates } from "./ticket-updates";
 import { TicketUpdateForm } from "./ticket-update-form";
 import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
 
 interface TicketDetailsProps {
   ticket: Ticket;
@@ -23,16 +23,43 @@ const statusColors: Record<string, string> = {
   assigned: "bg-yellow-500/10 text-yellow-500",
   in_progress: "bg-purple-500/10 text-purple-500",
   needs_vendor: "bg-orange-500/10 text-orange-500",
+  vendor_assigned: "bg-yellow-500/10 text-yellow-500",
+  vendor_in_progress: "bg-purple-500/10 text-purple-500",
   escalated: "bg-red-500/10 text-red-500",
   resolved: "bg-green-500/10 text-green-500",
 };
 
+// Available status transitions based on current status and role
+const getAvailableStatuses = (currentStatus: string, role: string): string[] => {
+  if (role === "admin") {
+    return Object.values(TicketStatus);
+  }
+
+  switch (currentStatus) {
+    case TicketStatus.ASSIGNED:
+      return [TicketStatus.IN_PROGRESS, TicketStatus.NEEDS_VENDOR, TicketStatus.ESCALATED];
+    case TicketStatus.IN_PROGRESS:
+      return [TicketStatus.RESOLVED, TicketStatus.NEEDS_VENDOR, TicketStatus.ESCALATED];
+    case TicketStatus.NEEDS_VENDOR:
+      return [TicketStatus.VENDOR_ASSIGNED];
+    default:
+      return [];
+  }
+};
+
 export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [selectedStatus, setSelectedStatus] = useState(ticket.status);
 
   const { data: wardens = [] } = useQuery<User[]>({
     queryKey: ["/api/users/wardens"],
+    enabled: user?.role === "admin",
+  });
+
+  const { data: vendors = [] } = useQuery<Vendor[]>({
+    queryKey: ["/api/vendors"],
+    enabled: user?.role === "admin" || user?.role === "warden",
   });
 
   const updateTicketMutation = useMutation({
@@ -55,6 +82,10 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
       });
     },
   });
+
+  const availableStatuses = getAvailableStatuses(ticket.status, user?.role || "");
+  const canAssignVendor = user?.role === "warden" && ticket.status === TicketStatus.NEEDS_VENDOR;
+  const canApproveVendor = user?.role === "admin" && ticket.status === TicketStatus.VENDOR_ASSIGNED;
 
   return (
     <Sheet open={open} onOpenChange={() => onClose()}>
@@ -115,51 +146,107 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
               </div>
             )}
 
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Manage Ticket</h3>
-              <div className="flex flex-col gap-4">
-                <Select
-                  value={selectedStatus}
-                  onValueChange={(status) => {
-                    setSelectedStatus(status);
-                    updateTicketMutation.mutate({ status });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Update status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.values(TicketStatus).map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {status}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            {(user?.role === "admin" || user?.role === "warden") && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-muted-foreground">Manage Ticket</h3>
+                <div className="flex flex-col gap-4">
+                  {availableStatuses.length > 0 && (
+                    <Select
+                      value={selectedStatus}
+                      onValueChange={(status) => {
+                        setSelectedStatus(status);
+                        updateTicketMutation.mutate({ status });
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Update status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableStatuses.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {status}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
 
-                {!ticket.assignedTo && (
-                  <Select
-                    onValueChange={(wardenId) =>
-                      updateTicketMutation.mutate({
-                        assignedTo: parseInt(wardenId),
-                        status: TicketStatus.ASSIGNED,
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Assign warden" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {wardens.map((warden) => (
-                        <SelectItem key={warden.id} value={warden.id.toString()}>
-                          {warden.username}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+                  {user?.role === "admin" && !ticket.assignedTo && (
+                    <Select
+                      onValueChange={(wardenId) =>
+                        updateTicketMutation.mutate({
+                          assignedTo: parseInt(wardenId),
+                          status: TicketStatus.ASSIGNED,
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Assign warden" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {wardens.map((warden) => (
+                          <SelectItem key={warden.id} value={warden.id.toString()}>
+                            {warden.username}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+
+                  {canAssignVendor && (
+                    <Select
+                      onValueChange={(vendorId) =>
+                        updateTicketMutation.mutate({
+                          vendorId: parseInt(vendorId),
+                          status: TicketStatus.VENDOR_ASSIGNED,
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Assign vendor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {vendors
+                          .filter((v) => v.isActive)
+                          .map((vendor) => (
+                            <SelectItem key={vendor.id} value={vendor.id.toString()}>
+                              <div className="flex items-center gap-2">
+                                <Store className="h-4 w-4" />
+                                <span>{vendor.name}</span>
+                                <span className="text-muted-foreground">
+                                  ({vendor.specialization})
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+
+                  {canApproveVendor && (
+                    <div className="flex gap-2">
+                      <Select
+                        onValueChange={(status) =>
+                          updateTicketMutation.mutate({
+                            status: status === "approve" 
+                              ? TicketStatus.VENDOR_IN_PROGRESS 
+                              : TicketStatus.NEEDS_VENDOR
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Approve vendor assignment" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="approve">Approve Vendor</SelectItem>
+                          <SelectItem value="reject">Reject Vendor</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <Separator className="my-6" />
