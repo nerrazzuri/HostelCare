@@ -11,6 +11,7 @@ import AdminDashboard from "@/pages/admin-dashboard";
 import ScanTicket from "@/pages/scan-ticket";
 import QRCodeManagement from "@/pages/qr-code-management";
 import VendorManagement from "@/pages/vendor-management";
+import TicketHistory from "@/pages/ticket-history"; // Added import
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
@@ -28,6 +29,7 @@ function Router() {
       <ProtectedRoute path="/scan/:location" component={ScanTicket} />
       <ProtectedRoute path="/qr-management" component={QRCodeManagement} />
       <ProtectedRoute path="/vendor-management" component={VendorManagement} />
+      <ProtectedRoute path="/ticket-history" component={TicketHistory} /> {/* Added route */}
       <Route component={NotFound} />
     </Switch>
   );

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Ticket, TicketStatus, User } from "@shared/schema";
+import { Ticket, TicketStatus } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -33,16 +33,21 @@ export function TicketList({ filter }: TicketListProps) {
     queryKey: ["/api/tickets"],
   });
 
-  const { data: wardens = [] } = useQuery<User[]>({
-    queryKey: ["/api/users/wardens"],
-    enabled: user?.role === "admin",
-  });
-
   let filteredTickets = tickets;
-  if (filter === "unassigned") {
-    filteredTickets = tickets.filter(t => !t.assignedTo);
-  } else if (filter === "escalated") {
-    filteredTickets = tickets.filter(t => t.status === TicketStatus.ESCALATED);
+
+  // First apply the resolved/unresolved filter
+  if (filter === "resolved") {
+    filteredTickets = tickets.filter(t => t.status === TicketStatus.RESOLVED);
+  } else {
+    // For all other views, exclude resolved tickets
+    filteredTickets = tickets.filter(t => t.status !== TicketStatus.RESOLVED);
+
+    // Then apply specific filters
+    if (filter === "unassigned") {
+      filteredTickets = filteredTickets.filter(t => !t.assignedTo);
+    } else if (filter === "escalated") {
+      filteredTickets = filteredTickets.filter(t => t.status === TicketStatus.ESCALATED);
+    }
   }
 
   // Apply search filter
@@ -66,6 +71,9 @@ export function TicketList({ filter }: TicketListProps) {
       <div className="text-center p-8">
         <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" />
         <p className="mt-4 text-lg font-medium">No tickets found</p>
+        {filter === "resolved" && (
+          <p className="mt-2 text-muted-foreground">No resolved tickets in the system yet</p>
+        )}
       </div>
     );
   }

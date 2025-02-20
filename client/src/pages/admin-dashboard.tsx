@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { TicketList } from "@/components/ticket-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut, QrCode, Store } from "lucide-react";
+import { Clock, LogOut, QrCode, Store } from "lucide-react";
 import { useLocation } from "wouter";
 
 export default function AdminDashboard() {
@@ -17,6 +17,13 @@ export default function AdminDashboard() {
         <div className="max-w-[95%] mx-auto px-2 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">Admin Dashboard</h1>
           <div className="flex items-center gap-4">
+            <Button 
+              variant="outline"
+              onClick={() => setLocation("/ticket-history")}
+            >
+              <Clock className="mr-2 h-4 w-4" />
+              Ticket History
+            </Button>
             <Button 
               variant="outline"
               onClick={() => setLocation("/vendor-management")}
@@ -44,15 +51,15 @@ export default function AdminDashboard() {
 
       <main className="max-w-[95%] mx-auto px-2 py-8">
         <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-2">Maintenance Tickets</h2>
+          <h2 className="text-xl font-semibold mb-2">Active Maintenance Tickets</h2>
           <p className="text-muted-foreground">
-            Manage all maintenance requests and assign them to wardens
+            Manage all active maintenance requests and assign them to wardens
           </p>
         </div>
 
         <Tabs defaultValue="all" className="w-full">
           <TabsList>
-            <TabsTrigger value="all">All Tickets</TabsTrigger>
+            <TabsTrigger value="all">All Active</TabsTrigger>
             <TabsTrigger value="unassigned">Unassigned</TabsTrigger>
             <TabsTrigger value="escalated">Escalated</TabsTrigger>
           </TabsList>
