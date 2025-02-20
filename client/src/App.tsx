@@ -7,7 +7,7 @@ import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import WardenDashboard from "@/pages/warden-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
-import ScanTicket from "@/pages/scan-ticket";
+import CreateTicket from "@/pages/create-ticket";
 import QRCodeManagement from "@/pages/qr-code-management";
 import VendorManagement from "@/pages/vendor-management";
 import { ProtectedRoute } from "./lib/protected-route";
@@ -18,11 +18,10 @@ function Router() {
   return (
     <Switch>
       <Route path="/">
-        {user ? <Redirect to={`/${user.role}`} /> : <Redirect to="/scan" />}
+        {user ? <Redirect to={`/${user.role}`} /> : <Redirect to="/auth" />}
       </Route>
       <Route path="/auth" component={AuthPage} />
-      <Route path="/scan" component={ScanTicket} />
-      <Route path="/scan/:location" component={ScanTicket} />
+      <Route path="/ticket/create/:location" component={CreateTicket} />
       <ProtectedRoute path="/warden" component={WardenDashboard} />
       <ProtectedRoute path="/admin" component={AdminDashboard} />
       <ProtectedRoute path="/qr-management" component={QRCodeManagement} />
