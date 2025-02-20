@@ -32,6 +32,12 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [showVendorSelect, setShowVendorSelect] = useState(false);
+  const [selectedWardenId, setSelectedWardenId] = useState<string>("");
+  const [selectedVendorId, setSelectedVendorId] = useState<string>("");
+  const [selectedVendorAction, setSelectedVendorAction] = useState<string>("");
+  const [selectedResolutionAction, setSelectedResolutionAction] = useState<string>("");
+  const [selectedStatus, setSelectedStatus] = useState<string>("");
+
 
   // Fetch wardens list for admin
   const { data: wardens = [] } = useQuery<User[]>({
@@ -73,41 +79,119 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
   const canApproveVendor = user?.role === "admin" && ticket.status === TicketStatus.NEEDS_VENDOR;
   const canApproveResolution = user?.role === "admin" && ticket.status === TicketStatus.PENDING_APPROVAL;
 
-  // Warden-specific handlers
-  const handleNeedsVendor = () => {
-    setShowVendorSelect(true);
+  // Admin-specific handlers
+  const handleWardenAssignment = () => {
+    if (!selectedWardenId) {
+      toast({
+        title: "Error",
+        description: "Please select a warden first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateTicketMutation.mutate({
+      assignedTo: parseInt(selectedWardenId),
+      status: TicketStatus.IN_PROGRESS,
+    });
+    setSelectedWardenId("");
   };
 
-  const handleVendorSelection = (vendorId: string) => {
+  const handleVendorApproval = () => {
+    if (!selectedVendorAction) {
+      toast({
+        title: "Error",
+        description: "Please select an action",
+        variant: "destructive",
+      });
+      return;
+    }
+
     updateTicketMutation.mutate({
-      vendorId: parseInt(vendorId),
+      status: selectedVendorAction === "approve" ? TicketStatus.IN_PROGRESS : TicketStatus.IN_PROGRESS,
+      vendorId: selectedVendorAction === "reject" ? null : ticket.vendorId,
+    });
+    setSelectedVendorAction("");
+  };
+
+  const handleResolutionApproval = () => {
+    if (!selectedResolutionAction) {
+      toast({
+        title: "Error",
+        description: "Please select an action",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateTicketMutation.mutate({
+      status: selectedResolutionAction === "approve" ? TicketStatus.RESOLVED : TicketStatus.IN_PROGRESS,
+    });
+    setSelectedResolutionAction("");
+  };
+
+  // Warden-specific handlers
+  const handleVendorSelection = () => {
+    if (!selectedVendorId) {
+      toast({
+        title: "Error",
+        description: "Please select a vendor first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateTicketMutation.mutate({
+      vendorId: parseInt(selectedVendorId),
       status: TicketStatus.NEEDS_VENDOR,
     });
+    setSelectedVendorId("");
     setShowVendorSelect(false);
   };
 
-  const handleRequestApproval = () => {
-    updateTicketMutation.mutate({
-      status: TicketStatus.PENDING_APPROVAL,
-    });
+  const handleStatusUpdate = () => {
+    if (!selectedStatus) {
+      toast({
+        title: "Error",
+        description: "Please select a status",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedStatus === TicketStatus.NEEDS_VENDOR) {
+      setShowVendorSelect(true);
+    } else {
+      updateTicketMutation.mutate({ status: selectedStatus });
+    }
+    setSelectedStatus("");
   };
 
-  // Admin-specific handlers
-  const handleWardenAssignment = (wardenId: number) => {
+  const handleNeedsVendor = () => {
+    setSelectedStatus(TicketStatus.NEEDS_VENDOR);
+    handleStatusUpdate();
+  };
+
+  const handleRequestApproval = () => {
+    setSelectedStatus(TicketStatus.PENDING_APPROVAL);
+    handleStatusUpdate();
+  };
+
+  const handleWardenAssignmentOld = (wardenId: number) => {
     updateTicketMutation.mutate({
       assignedTo: wardenId,
       status: TicketStatus.IN_PROGRESS,
     });
   };
 
-  const handleVendorApproval = (approved: boolean) => {
+  const handleVendorApprovalOld = (approved: boolean) => {
     updateTicketMutation.mutate({
       status: approved ? TicketStatus.IN_PROGRESS : TicketStatus.IN_PROGRESS,
       vendorId: approved ? ticket.vendorId : null,
     });
   };
 
-  const handleResolutionApproval = (approved: boolean) => {
+  const handleResolutionApprovalOld = (approved: boolean) => {
     updateTicketMutation.mutate({
       status: approved ? TicketStatus.RESOLVED : TicketStatus.IN_PROGRESS,
     });
@@ -130,7 +214,7 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
             <div>
               <h3 className="text-sm font-medium text-muted-foreground mb-2">Status</h3>
               <Badge className={statusColors[ticket.status]}>
-                {ticket.status.replace(/_/g, ' ').replace(/\w\S*/g, 
+                {ticket.status.replace(/_/g, ' ').replace(/\w\S*/g,
                   (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
                 )}
               </Badge>
@@ -183,16 +267,29 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
                 {canAssignWarden && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium">Assign to Warden</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      {wardens.map((warden) => (
-                        <Button
-                          key={warden.id}
-                          variant="outline"
-                          onClick={() => handleWardenAssignment(warden.id)}
-                        >
-                          {warden.username}
-                        </Button>
-                      ))}
+                    <div className="flex gap-2">
+                      <Select
+                        value={selectedWardenId}
+                        onValueChange={setSelectedWardenId}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Choose warden" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {wardens.map((warden) => (
+                            <SelectItem key={warden.id} value={warden.id.toString()}>
+                              {warden.username}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="outline"
+                        onClick={handleWardenAssignment}
+                        disabled={!selectedWardenId || updateTicketMutation.isPending}
+                      >
+                        Assign
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -202,21 +299,24 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium">Review Vendor Selection</h4>
                     <div className="flex gap-2">
+                      <Select
+                        value={selectedVendorAction}
+                        onValueChange={setSelectedVendorAction}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Choose action" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="approve">Approve Vendor & Start Work</SelectItem>
+                          <SelectItem value="reject">Reject & Request Changes</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <Button
                         variant="outline"
-                        className="flex-1"
-                        onClick={() => handleVendorApproval(true)}
+                        onClick={handleVendorApproval}
+                        disabled={!selectedVendorAction || updateTicketMutation.isPending}
                       >
-                        <Check className="mr-2 h-4 w-4" />
-                        Approve Vendor
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => handleVendorApproval(false)}
-                      >
-                        <X className="mr-2 h-4 w-4" />
-                        Reject Vendor
+                        Submit
                       </Button>
                     </div>
                   </div>
@@ -227,21 +327,24 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium">Review Resolution</h4>
                     <div className="flex gap-2">
+                      <Select
+                        value={selectedResolutionAction}
+                        onValueChange={setSelectedResolutionAction}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Choose action" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="approve">Approve & Close Ticket</SelectItem>
+                          <SelectItem value="reject">Request Changes</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <Button
                         variant="outline"
-                        className="flex-1"
-                        onClick={() => handleResolutionApproval(true)}
+                        onClick={handleResolutionApproval}
+                        disabled={!selectedResolutionAction || updateTicketMutation.isPending}
                       >
-                        <Check className="mr-2 h-4 w-4" />
-                        Approve & Close
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => handleResolutionApproval(false)}
-                      >
-                        <X className="mr-2 h-4 w-4" />
-                        Request Changes
+                        Submit
                       </Button>
                     </div>
                   </div>
@@ -254,25 +357,31 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
               <div className="space-y-4">
                 <h3 className="text-sm font-medium text-muted-foreground">Warden Actions</h3>
 
-                {/* Status Change Buttons */}
+                {/* Status Changes */}
                 {ticket.status === TicketStatus.IN_PROGRESS && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      className="flex-1"
-                      onClick={handleNeedsVendor}
-                    >
-                      <Store className="mr-2 h-4 w-4" />
-                      Need Vendor
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="flex-1"
-                      onClick={handleRequestApproval}
-                    >
-                      <Check className="mr-2 h-4 w-4" />
-                      Request Approval
-                    </Button>
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">Update Status</h4>
+                    <div className="flex gap-2">
+                      <Select
+                        value={selectedStatus}
+                        onValueChange={setSelectedStatus}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Choose status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={TicketStatus.NEEDS_VENDOR}>Need Vendor</SelectItem>
+                          <SelectItem value={TicketStatus.PENDING_APPROVAL}>Request Approval</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="outline"
+                        onClick={handleStatusUpdate}
+                        disabled={!selectedStatus || updateTicketMutation.isPending}
+                      >
+                        Update
+                      </Button>
+                    </div>
                   </div>
                 )}
 
@@ -280,25 +389,37 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
                 {showVendorSelect && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium">Select Vendor</h4>
-                    <div className="grid grid-cols-1 gap-2">
-                      {vendors
-                        .filter((v) => v.isActive)
-                        .map((vendor) => (
-                          <Button
-                            key={vendor.id}
-                            variant="outline"
-                            onClick={() => handleVendorSelection(vendor.id.toString())}
-                            className="justify-start"
-                          >
-                            <Store className="mr-2 h-4 w-4" />
-                            <div className="flex items-center gap-2">
-                              <span>{vendor.name}</span>
-                              <span className="text-muted-foreground">
-                                ({vendor.specialization})
-                              </span>
-                            </div>
-                          </Button>
-                        ))}
+                    <div className="flex gap-2">
+                      <Select
+                        value={selectedVendorId}
+                        onValueChange={setSelectedVendorId}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Choose vendor" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {vendors
+                            .filter((v) => v.isActive)
+                            .map((vendor) => (
+                              <SelectItem key={vendor.id} value={vendor.id.toString()}>
+                                <div className="flex items-center gap-2">
+                                  <Store className="h-4 w-4" />
+                                  <span>{vendor.name}</span>
+                                  <span className="text-muted-foreground">
+                                    ({vendor.specialization})
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="outline"
+                        onClick={handleVendorSelection}
+                        disabled={!selectedVendorId || updateTicketMutation.isPending}
+                      >
+                        Select
+                      </Button>
                     </div>
                   </div>
                 )}
