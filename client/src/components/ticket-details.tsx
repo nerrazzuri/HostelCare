@@ -166,9 +166,9 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
 
   return (
     <Sheet open={open} onOpenChange={() => onClose()}>
-      <SheetContent side="right" className="w-[500px] sm:w-[600px] overflow-y-auto border-l">
+      <SheetContent side="right" className="w-full sm:w-[500px] lg:w-[600px] overflow-y-auto border-l p-4 sm:p-6">
         <SheetHeader className="space-y-4 pb-4 border-b">
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
             <div>
               <div className="text-sm text-muted-foreground">Ticket #{ticket.id}</div>
               <SheetTitle className="text-xl mt-1">{ticket.title}</SheetTitle>
@@ -191,7 +191,7 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
             {ticket.images && ticket.images.length > 0 && (
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-2">Images</h3>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {ticket.images.map((imagePath, index) => (
                     <Dialog key={index}>
                       <DialogTrigger asChild>
@@ -216,7 +216,7 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-2">Location</h3>
                 <div className="flex items-center gap-2 text-sm">
@@ -233,7 +233,6 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
               </div>
             </div>
 
-            {/* Selected Vendor Info (if any) */}
             {selectedVendor && (
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-2">Assigned Vendor</h3>
@@ -249,12 +248,10 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
               </div>
             )}
 
-            {/* Admin Actions */}
             {user?.role === "admin" && (
               <div className="space-y-4">
                 <h3 className="text-sm font-medium text-muted-foreground">Admin Actions</h3>
 
-                {/* Warden Assignment */}
                 {canAssignWarden && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium">Assign to Warden</h4>
@@ -285,14 +282,12 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
                   </div>
                 )}
 
-                {/* Vendor Approval with Selection */}
                 {canModifyVendor && (
                   <div className="space-y-4">
                     <h4 className="text-sm font-medium">
                       {ticket.vendorId ? "Vendor Selection Review" : "Select Vendor"}
                     </h4>
 
-                    {/* Show currently selected vendor if any */}
                     {ticket.vendorId && selectedVendor && (
                       <div className="p-4 border rounded-lg bg-muted">
                         <div className="text-sm font-medium mb-2">Currently Selected Vendor:</div>
@@ -308,7 +303,6 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
                       </div>
                     )}
 
-                    {/* Choose new vendor option */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <AlertCircle className="h-4 w-4 text-muted-foreground" />
@@ -344,7 +338,6 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
                       </Select>
                     </div>
 
-                    {/* Action buttons */}
                     <div className="flex gap-2">
                       {ticket.vendorId && (
                         <Button
@@ -376,7 +369,6 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
                   </div>
                 )}
 
-                {/* Resolution Approval */}
                 {canApproveResolution && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium">Review Resolution</h4>
@@ -409,7 +401,6 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
               </div>
             )}
 
-            {/* Warden Actions */}
             {user?.role === "warden" && (canWardenResolve || showVendorSelect) && (
               <div className="space-y-4">
                 <h3 className="text-sm font-medium text-muted-foreground">Warden Actions</h3>
@@ -438,7 +429,6 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
                   </div>
                 )}
 
-                {/* Vendor Selection */}
                 {showVendorSelect && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium">Select Vendor</h4>

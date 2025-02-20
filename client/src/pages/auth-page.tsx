@@ -52,17 +52,18 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
-      <div className="flex items-center justify-center p-8">
-        <Tabs defaultValue="login" className="w-full max-w-md">
-          <TabsList className="grid grid-cols-2">
+      {/* Form Section - Full width on mobile, half width on desktop */}
+      <div className="flex items-center justify-center p-4 sm:p-8">
+        <Tabs defaultValue="login" className="w-full max-w-md space-y-6">
+          <TabsList className="grid grid-cols-2 w-full">
             <TabsTrigger value="login">Login</TabsTrigger>
             <TabsTrigger value="register">Register</TabsTrigger>
           </TabsList>
 
           <TabsContent value="login">
             <Card>
-              <CardHeader>
-                <CardTitle>Login</CardTitle>
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-2xl">Login</CardTitle>
                 <CardDescription>Welcome back! Please login to continue.</CardDescription>
               </CardHeader>
               <CardContent>
@@ -105,8 +106,8 @@ export default function AuthPage() {
 
           <TabsContent value="register">
             <Card>
-              <CardHeader>
-                <CardTitle>Register</CardTitle>
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-2xl">Register</CardTitle>
                 <CardDescription>Create a new account to get started.</CardDescription>
               </CardHeader>
               <CardContent>
@@ -184,6 +185,7 @@ export default function AuthPage() {
         </Tabs>
       </div>
 
+      {/* Hero Section - Hidden on mobile, shown on desktop */}
       <div className="hidden lg:flex flex-col justify-center p-8 bg-primary text-primary-foreground">
         <div className="max-w-md mx-auto space-y-6">
           <Building2 className="h-12 w-12" />
