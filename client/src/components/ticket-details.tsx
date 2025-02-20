@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Ticket, TicketStatus, User, Vendor } from "@shared/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Clock, MapPin, Store } from "lucide-react";
+import { Clock, MapPin, Store, X, Check } from "lucide-react";
 import { TicketUpdates } from "./ticket-updates";
 import { TicketUpdateForm } from "./ticket-update-form";
 import { Separator } from "@/components/ui/separator";
@@ -27,25 +28,9 @@ const statusColors: Record<string, string> = {
   cancelled: "bg-red-500/10 text-red-500",
 };
 
-// Available status transitions based on current status and role
-const getAvailableStatuses = (currentStatus: string, role: string): string[] => {
-  if (role === "warden") {
-    switch (currentStatus) {
-      case TicketStatus.IN_PROGRESS:
-        return [TicketStatus.NEEDS_VENDOR, TicketStatus.PENDING_APPROVAL];
-      case TicketStatus.NEEDS_VENDOR:
-        return [TicketStatus.IN_PROGRESS]; // Can revert if vendor not needed
-      default:
-        return [];
-    }
-  }
-  return [];
-};
-
 export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const [selectedStatus, setSelectedStatus] = useState(ticket.status);
   const [showVendorSelect, setShowVendorSelect] = useState(false);
 
   // Fetch wardens list for admin
@@ -84,20 +69,13 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
     },
   });
 
-  const availableStatuses = getAvailableStatuses(ticket.status, user?.role || "");
   const canAssignWarden = user?.role === "admin" && ticket.status === TicketStatus.OPEN;
   const canApproveVendor = user?.role === "admin" && ticket.status === TicketStatus.NEEDS_VENDOR;
   const canApproveResolution = user?.role === "admin" && ticket.status === TicketStatus.PENDING_APPROVAL;
 
   // Warden-specific handlers
-  const handleStatusChange = (newStatus: string) => {
-    setSelectedStatus(newStatus);
-    if (newStatus === TicketStatus.NEEDS_VENDOR) {
-      setShowVendorSelect(true);
-    } else {
-      setShowVendorSelect(false);
-      updateTicketMutation.mutate({ status: newStatus });
-    }
+  const handleNeedsVendor = () => {
+    setShowVendorSelect(true);
   };
 
   const handleVendorSelection = (vendorId: string) => {
@@ -108,24 +86,30 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
     setShowVendorSelect(false);
   };
 
-  // Admin-specific handlers
-  const handleWardenAssignment = (wardenId: string) => {
+  const handleRequestApproval = () => {
     updateTicketMutation.mutate({
-      assignedTo: parseInt(wardenId),
+      status: TicketStatus.PENDING_APPROVAL,
+    });
+  };
+
+  // Admin-specific handlers
+  const handleWardenAssignment = (wardenId: number) => {
+    updateTicketMutation.mutate({
+      assignedTo: wardenId,
       status: TicketStatus.IN_PROGRESS,
     });
   };
 
-  const handleVendorApproval = (action: "approve" | "reject") => {
+  const handleVendorApproval = (approved: boolean) => {
     updateTicketMutation.mutate({
-      status: action === "approve" ? TicketStatus.IN_PROGRESS : TicketStatus.IN_PROGRESS,
-      vendorId: action === "reject" ? null : ticket.vendorId,
+      status: approved ? TicketStatus.IN_PROGRESS : TicketStatus.IN_PROGRESS,
+      vendorId: approved ? ticket.vendorId : null,
     });
   };
 
-  const handleResolutionApproval = (action: "approve" | "reject") => {
+  const handleResolutionApproval = (approved: boolean) => {
     updateTicketMutation.mutate({
-      status: action === "approve" ? TicketStatus.RESOLVED : TicketStatus.IN_PROGRESS,
+      status: approved ? TicketStatus.RESOLVED : TicketStatus.IN_PROGRESS,
     });
   };
 
@@ -174,22 +158,6 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
               </div>
             </div>
 
-            {ticket.images && ticket.images.length > 0 && (
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Images</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  {ticket.images.map((image, index) => (
-                    <img
-                      key={index}
-                      src={image}
-                      alt={`Ticket image ${index + 1}`}
-                      className="rounded-md object-cover w-full aspect-video"
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Selected Vendor Info (if any) */}
             {selectedVendor && (
               <div>
@@ -213,44 +181,70 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
 
                 {/* Warden Assignment */}
                 {canAssignWarden && (
-                  <Select onValueChange={handleWardenAssignment}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Assign to warden" />
-                    </SelectTrigger>
-                    <SelectContent>
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">Assign to Warden</h4>
+                    <div className="grid grid-cols-2 gap-2">
                       {wardens.map((warden) => (
-                        <SelectItem key={warden.id} value={warden.id.toString()}>
+                        <Button
+                          key={warden.id}
+                          variant="outline"
+                          onClick={() => handleWardenAssignment(warden.id)}
+                        >
                           {warden.username}
-                        </SelectItem>
+                        </Button>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </div>
+                  </div>
                 )}
 
                 {/* Vendor Approval */}
-                {canApproveVendor && (
-                  <Select onValueChange={handleVendorApproval}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Review vendor selection" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="approve">Approve Vendor & Start Work</SelectItem>
-                      <SelectItem value="reject">Reject & Request Changes</SelectItem>
-                    </SelectContent>
-                  </Select>
+                {canApproveVendor && selectedVendor && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">Review Vendor Selection</h4>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => handleVendorApproval(true)}
+                      >
+                        <Check className="mr-2 h-4 w-4" />
+                        Approve Vendor
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => handleVendorApproval(false)}
+                      >
+                        <X className="mr-2 h-4 w-4" />
+                        Reject Vendor
+                      </Button>
+                    </div>
+                  </div>
                 )}
 
                 {/* Resolution Approval */}
                 {canApproveResolution && (
-                  <Select onValueChange={handleResolutionApproval}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Review resolution" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="approve">Approve & Close Ticket</SelectItem>
-                      <SelectItem value="reject">Request Changes</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">Review Resolution</h4>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => handleResolutionApproval(true)}
+                      >
+                        <Check className="mr-2 h-4 w-4" />
+                        Approve & Close
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => handleResolutionApproval(false)}
+                      >
+                        <X className="mr-2 h-4 w-4" />
+                        Request Changes
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
@@ -258,53 +252,54 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
             {/* Warden Actions */}
             {user?.role === "warden" && (
               <div className="space-y-4">
-                <h3 className="text-sm font-medium text-muted-foreground">Update Status</h3>
+                <h3 className="text-sm font-medium text-muted-foreground">Warden Actions</h3>
 
-                {/* Status Changes */}
-                {availableStatuses.length > 0 && (
-                  <Select
-                    value={selectedStatus}
-                    onValueChange={handleStatusChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Update status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableStatuses.map((status) => (
-                        <SelectItem key={status} value={status}>
-                          {status.replace(/_/g, ' ').replace(/\w\S*/g, 
-                            (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
-                          )}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                {/* Status Change Buttons */}
+                {ticket.status === TicketStatus.IN_PROGRESS && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={handleNeedsVendor}
+                    >
+                      <Store className="mr-2 h-4 w-4" />
+                      Need Vendor
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={handleRequestApproval}
+                    >
+                      <Check className="mr-2 h-4 w-4" />
+                      Request Approval
+                    </Button>
+                  </div>
                 )}
 
                 {/* Vendor Selection */}
                 {showVendorSelect && (
                   <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-muted-foreground">Select Vendor</h3>
-                    <Select onValueChange={handleVendorSelection}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose a vendor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {vendors
-                          .filter((v) => v.isActive)
-                          .map((vendor) => (
-                            <SelectItem key={vendor.id} value={vendor.id.toString()}>
-                              <div className="flex items-center gap-2">
-                                <Store className="h-4 w-4" />
-                                <span>{vendor.name}</span>
-                                <span className="text-muted-foreground">
-                                  ({vendor.specialization})
-                                </span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                    <h4 className="text-sm font-medium">Select Vendor</h4>
+                    <div className="grid grid-cols-1 gap-2">
+                      {vendors
+                        .filter((v) => v.isActive)
+                        .map((vendor) => (
+                          <Button
+                            key={vendor.id}
+                            variant="outline"
+                            onClick={() => handleVendorSelection(vendor.id.toString())}
+                            className="justify-start"
+                          >
+                            <Store className="mr-2 h-4 w-4" />
+                            <div className="flex items-center gap-2">
+                              <span>{vendor.name}</span>
+                              <span className="text-muted-foreground">
+                                ({vendor.specialization})
+                              </span>
+                            </div>
+                          </Button>
+                        ))}
+                    </div>
                   </div>
                 )}
               </div>
