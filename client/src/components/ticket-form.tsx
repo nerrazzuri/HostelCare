@@ -11,6 +11,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { useEffect } from 'react';
+import { AlertCircle } from "lucide-react";
 
 interface TicketFormProps {
   initialLocation?: string;
@@ -25,13 +26,12 @@ export function TicketForm({ initialLocation }: TicketFormProps) {
     defaultValues: {
       title: "",
       description: "",
-      location: initialLocation || "",
+      location: "",
       priority: TicketPriority.MEDIUM,
       images: [],
     },
   });
 
-  // Add this useEffect to update the location field when initialLocation changes
   useEffect(() => {
     if (initialLocation) {
       form.setValue('location', initialLocation);
@@ -61,6 +61,15 @@ export function TicketForm({ initialLocation }: TicketFormProps) {
   });
 
   const onSubmit = (data: any) => {
+    if (!data.location) {
+      toast({
+        title: "Location Required",
+        description: "Please scan a QR code to set the location",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]: [string, any]) => {
       if (key === "images") {
@@ -115,8 +124,24 @@ export function TicketForm({ initialLocation }: TicketFormProps) {
             <FormItem>
               <FormLabel>Location</FormLabel>
               <FormControl>
-                <Input {...field} />
+                <div className="relative">
+                  <Input 
+                    {...field} 
+                    readOnly 
+                    disabled
+                    className="bg-muted"
+                    placeholder="Scan QR code to set location"
+                  />
+                  {!field.value && (
+                    <AlertCircle className="absolute right-3 top-2.5 h-5 w-5 text-muted-foreground" />
+                  )}
+                </div>
               </FormControl>
+              {!field.value && (
+                <p className="text-sm text-muted-foreground">
+                  Scan a QR code to set the location
+                </p>
+              )}
               <FormMessage />
             </FormItem>
           )}
