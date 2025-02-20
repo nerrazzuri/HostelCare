@@ -131,6 +131,25 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
   };
 
   // Warden-specific handlers
+  const handleStatusUpdate = () => {
+    if (!selectedStatus) {
+      toast({
+        title: "Error",
+        description: "Please select a status",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedStatus === TicketStatus.NEEDS_VENDOR) {
+      setShowVendorSelect(true);
+      setSelectedStatus("");
+    } else if (selectedStatus === TicketStatus.PENDING_APPROVAL) {
+      updateTicketMutation.mutate({ status: TicketStatus.PENDING_APPROVAL });
+      setSelectedStatus("");
+    }
+  };
+
   const handleVendorSelection = () => {
     if (!selectedVendorId) {
       toast({
@@ -147,24 +166,6 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
     });
     setSelectedVendorId("");
     setShowVendorSelect(false);
-  };
-
-  const handleStatusUpdate = () => {
-    if (!selectedStatus) {
-      toast({
-        title: "Error",
-        description: "Please select a status",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (selectedStatus === TicketStatus.NEEDS_VENDOR) {
-      setShowVendorSelect(true);
-    } else {
-      updateTicketMutation.mutate({ status: selectedStatus });
-    }
-    setSelectedStatus("");
   };
 
   const handleNeedsVendor = () => {
@@ -371,7 +372,7 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value={TicketStatus.NEEDS_VENDOR}>Need Vendor</SelectItem>
-                          <SelectItem value={TicketStatus.PENDING_APPROVAL}>Request Approval</SelectItem>
+                          <SelectItem value={TicketStatus.PENDING_APPROVAL}>Mark as Resolved</SelectItem>
                         </SelectContent>
                       </Select>
                       <Button
@@ -418,7 +419,7 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
                         onClick={handleVendorSelection}
                         disabled={!selectedVendorId || updateTicketMutation.isPending}
                       >
-                        Select
+                        Submit
                       </Button>
                     </div>
                   </div>
