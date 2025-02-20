@@ -256,53 +256,82 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
 
                 {/* Vendor Approval with Selection */}
                 {canModifyVendor && (
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     <h4 className="text-sm font-medium">
-                      {ticket.vendorId ? "Vendor Selection Review" : "Approve & Select Vendor"}
+                      {ticket.vendorId ? "Vendor Selection Review" : "Select Vendor"}
                     </h4>
-                    <div className="flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">
-                        {ticket.vendorId
-                          ? "Review and approve vendor selected by warden"
-                          : "Select and approve vendor for this ticket"}
-                      </span>
-                    </div>
-                    {!ticket.vendorId && (
-                      <div className="flex gap-2">
-                        <Select
-                          value={selectedVendorId}
-                          onValueChange={setSelectedVendorId}
-                        >
-                          <SelectTrigger className="flex-1">
-                            <SelectValue placeholder="Choose vendor" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {vendors
-                              .filter((v) => v.isActive)
-                              .map((vendor) => (
-                                <SelectItem key={vendor.id} value={vendor.id.toString()}>
-                                  <div className="flex items-center gap-2">
-                                    <Store className="h-4 w-4" />
-                                    <span>{vendor.name}</span>
-                                    <span className="text-muted-foreground">
-                                      ({vendor.specialization})
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
+
+                    {/* Show currently selected vendor if any */}
+                    {ticket.vendorId && selectedVendor && (
+                      <div className="p-4 border rounded-lg bg-muted">
+                        <div className="text-sm font-medium mb-2">Currently Selected Vendor:</div>
+                        <div className="flex items-center gap-2">
+                          <Store className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <div className="font-medium">{selectedVendor.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {selectedVendor.specialization}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
+
+                    {/* Choose new vendor option */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          {ticket.vendorId
+                            ? "You can either approve the selected vendor or choose a different one"
+                            : "Select a vendor for this ticket"}
+                        </span>
+                      </div>
+
+                      <Select
+                        value={selectedVendorId}
+                        onValueChange={setSelectedVendorId}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Choose vendor" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {vendors
+                            .filter((v) => v.isActive)
+                            .map((vendor) => (
+                              <SelectItem key={vendor.id} value={vendor.id.toString()}>
+                                <div className="flex items-center gap-2">
+                                  <Store className="h-4 w-4" />
+                                  <span>{vendor.name}</span>
+                                  <span className="text-muted-foreground">
+                                    ({vendor.specialization})
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Action buttons */}
                     <div className="flex gap-2">
+                      {ticket.vendorId && (
+                        <Button
+                          variant="outline"
+                          onClick={() => handleVendorApproval(true)}
+                          disabled={updateTicketMutation.isPending}
+                          className="flex-1"
+                        >
+                          Approve Current Vendor
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         onClick={() => handleVendorApproval(true)}
-                        disabled={(!ticket.vendorId && !selectedVendorId) || updateTicketMutation.isPending}
+                        disabled={!selectedVendorId || updateTicketMutation.isPending}
                         className="flex-1"
                       >
-                        {ticket.vendorId ? "Approve Selected Vendor" : "Approve & Assign"}
+                        {ticket.vendorId ? "Assign New Vendor" : "Assign Vendor"}
                       </Button>
                       <Button
                         variant="outline"
