@@ -33,8 +33,8 @@ export function TicketDetails({ ticket, onClose, open }: TicketDetailsProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [showVendorSelect, setShowVendorSelect] = useState(false);
-  const [selectedWardenId, setSelectedWardenId] = useState<string>("");
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
+  const [selectedWardenId, setSelectedWardenId] = useState<string>("");
 
   // Fetch wardens list for admin
   const { data: wardens = [] } = useQuery<User[]>({

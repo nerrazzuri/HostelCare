@@ -15,7 +15,8 @@ export const TicketStatus = {
   VENDOR_ASSIGNED: 'vendor_assigned',
   PENDING_APPROVAL: 'pending_approval',
   RESOLVED: 'resolved',
-  CANCELLED: 'cancelled'
+  CANCELLED: 'cancelled',
+  ESCALATED: 'escalated'  // Added this status
 } as const;
 
 export const TicketPriority = {
