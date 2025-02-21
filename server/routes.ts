@@ -25,12 +25,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const files = req.files as Express.Multer.File[] | undefined;
 
     try {
+      // Parse the JSON data from the form
+      const formData = JSON.parse(req.body.data);
+
       // Validate the incoming data against our schema
       const validatedData = insertTicketSchema.parse({
-        title: req.body.title,
-        description: req.body.description,
-        location: req.body.location,
-        priority: req.body.priority,
+        title: formData.title,
+        description: formData.description,
+        location: formData.location,
+        priority: formData.priority,
         images: files?.map(f => f.path) || null
       });
 

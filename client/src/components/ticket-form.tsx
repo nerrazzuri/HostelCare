@@ -41,8 +41,28 @@ export function TicketForm({ initialLocation }: TicketFormProps) {
   }, [initialLocation, form]);
 
   const createTicketMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
-      const res = await apiRequest("POST", "/api/tickets", formData);
+    mutationFn: async (formData: any) => {
+      // Convert FormData to a regular object
+      const jsonData = {
+        title: formData.title,
+        description: formData.description,
+        location: formData.location,
+        priority: formData.priority,
+        images: [] // We'll handle images separately
+      };
+
+      // Create a new FormData instance for the actual request
+      const requestData = new FormData();
+      requestData.append('data', JSON.stringify(jsonData));
+
+      // Append images if any
+      if (imageFiles.length > 0) {
+        imageFiles.forEach((file) => {
+          requestData.append("images", file);
+        });
+      }
+
+      const res = await apiRequest("POST", "/api/tickets", requestData);
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || 'Failed to create ticket');
@@ -78,32 +98,7 @@ export function TicketForm({ initialLocation }: TicketFormProps) {
         return;
       }
 
-      const formData = new FormData();
-
-      // Ensure all required fields are present and properly formatted
-      if (!data.title || !data.description || !data.priority) {
-        toast({
-          title: "Missing Fields",
-          description: "Please fill in all required fields",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Add required fields with type validation
-      formData.append("title", String(data.title).trim());
-      formData.append("description", String(data.description).trim());
-      formData.append("location", String(data.location).trim());
-      formData.append("priority", String(data.priority).trim());
-
-      // Add images if any
-      if (imageFiles.length > 0) {
-        imageFiles.forEach((file) => {
-          formData.append("images", file);
-        });
-      }
-
-      createTicketMutation.mutate(formData);
+      createTicketMutation.mutate(data);
     } catch (error) {
       console.error('Form submission error:', error);
       toast({
