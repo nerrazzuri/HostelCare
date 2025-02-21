@@ -80,12 +80,21 @@ export function TicketForm({ initialLocation }: TicketFormProps) {
 
       const formData = new FormData();
 
-      // Add required fields with explicit type conversion
-      formData.append("title", data.title.toString());
-      formData.append("description", data.description.toString());
-      formData.append("location", data.location.toString());
-      formData.append("priority", data.priority.toString());
-      formData.append("status", "OPEN");
+      // Ensure all required fields are present and properly formatted
+      if (!data.title || !data.description || !data.priority) {
+        toast({
+          title: "Missing Fields",
+          description: "Please fill in all required fields",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Add required fields with type validation
+      formData.append("title", String(data.title).trim());
+      formData.append("description", String(data.description).trim());
+      formData.append("location", String(data.location).trim());
+      formData.append("priority", String(data.priority).trim());
 
       // Add images if any
       if (imageFiles.length > 0) {

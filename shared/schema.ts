@@ -93,6 +93,14 @@ export const insertTicketSchema = createInsertSchema(tickets).pick({
   location: true,
   priority: true,
   images: true,
+}).extend({
+  priority: z.enum([
+    TicketPriority.LOW,
+    TicketPriority.MEDIUM,
+    TicketPriority.HIGH,
+    TicketPriority.URGENT
+  ]),
+  images: z.array(z.string()).nullable(),
 });
 
 export const insertTicketUpdateSchema = createInsertSchema(ticketUpdates).pick({

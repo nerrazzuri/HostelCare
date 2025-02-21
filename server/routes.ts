@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { TicketStatus, insertTicketSchema, insertTicketUpdateSchema, insertVendorSchema } from "@shared/schema";
+import { TicketStatus, TicketPriority, insertTicketSchema } from "@shared/schema";
 import multer from "multer";
 import { z } from "zod";
 
@@ -25,25 +25,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const files = req.files as Express.Multer.File[] | undefined;
 
     try {
-      // Parse form data with proper type conversion
-      const ticketData = {
+      // Validate the incoming data against our schema
+      const validatedData = insertTicketSchema.parse({
         title: req.body.title,
         description: req.body.description,
         location: req.body.location,
         priority: req.body.priority,
-        images: files?.map(f => f.path) || [],
-        createdBy: req.user?.id || 0, // Use 0 for anonymous submissions
+        images: files?.map(f => f.path) || null
+      });
+
+      // Create the ticket with the validated data
+      const ticket = await storage.createTicket({
+        ...validatedData,
         status: TicketStatus.OPEN,
+        createdBy: req.user?.id || 1, // Use 1 for anonymous submissions
         createdAt: new Date(),
         updatedAt: new Date()
-      };
+      });
 
-      // Create ticket
-      const ticket = await storage.createTicket(ticketData);
       res.status(201).json(ticket);
     } catch (error) {
       console.error('Ticket creation error:', error);
-      res.status(400).json({ message: 'Invalid ticket data', error });
+      res.status(400).json({ 
+        message: 'Invalid ticket data', 
+        error: error instanceof Error ? error.message : String(error) 
+      });
     }
   });
 
