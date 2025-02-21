@@ -77,6 +77,7 @@ export function TicketForm({ initialLocation }: TicketFormProps) {
     formData.append("description", data.description);
     formData.append("location", data.location);
     formData.append("priority", data.priority);
+    formData.append("status", "OPEN"); // Explicitly set status to OPEN
 
     imageFiles.forEach((file) => {
       formData.append("images", file);
