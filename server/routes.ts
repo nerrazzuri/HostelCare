@@ -25,22 +25,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const files = req.files as Express.Multer.File[] | undefined;
 
     try {
-      const ticketData = insertTicketSchema.parse({
-        ...req.body,
+      // Parse form data with proper type conversion
+      const ticketData = {
+        title: req.body.title,
+        description: req.body.description,
+        location: req.body.location,
+        priority: req.body.priority,
         images: files?.map(f => f.path) || [],
-        // Set a default priority if not provided
-        priority: req.body.priority || 'medium'
-      });
-
-      // Create ticket without requiring user authentication
-      const ticket = await storage.createTicket({
-        ...ticketData,
+        createdBy: req.user?.id || 0, // Use 0 for anonymous submissions
         status: TicketStatus.OPEN,
-        createdBy: 0, // Use 0 or another sentinel value for anonymous submissions
         createdAt: new Date(),
         updatedAt: new Date()
-      });
+      };
 
+      // Create ticket
+      const ticket = await storage.createTicket(ticketData);
       res.status(201).json(ticket);
     } catch (error) {
       console.error('Ticket creation error:', error);

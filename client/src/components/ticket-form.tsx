@@ -79,11 +79,12 @@ export function TicketForm({ initialLocation }: TicketFormProps) {
       }
 
       const formData = new FormData();
-      // Add required fields
-      formData.append("title", data.title);
-      formData.append("description", data.description);
-      formData.append("location", data.location);
-      formData.append("priority", data.priority);
+
+      // Add required fields with explicit type conversion
+      formData.append("title", data.title.toString());
+      formData.append("description", data.description.toString());
+      formData.append("location", data.location.toString());
+      formData.append("priority", data.priority.toString());
       formData.append("status", "OPEN");
 
       // Add images if any
