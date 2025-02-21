@@ -28,7 +28,7 @@ export function TicketForm({ initialLocation }: TicketFormProps) {
     defaultValues: {
       title: "",
       description: "",
-      location: "",
+      location: initialLocation || "",
       priority: TicketPriority.MEDIUM,
       images: [],
     },
@@ -41,8 +41,12 @@ export function TicketForm({ initialLocation }: TicketFormProps) {
   }, [initialLocation, form]);
 
   const createTicketMutation = useMutation({
-    mutationFn: async (data: FormData) => {
-      const res = await apiRequest("POST", "/api/tickets", data);
+    mutationFn: async (formData: FormData) => {
+      const res = await apiRequest("POST", "/api/tickets", formData);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Failed to create ticket');
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -51,7 +55,8 @@ export function TicketForm({ initialLocation }: TicketFormProps) {
         description: "Your maintenance request has been submitted successfully. The hostel staff will look into it.",
       });
       form.reset();
-      setLocation("/scan");
+      queryClient.invalidateQueries({ queryKey: ["/api/tickets"] });
+      setLocation("/tenant");
     },
     onError: (error: Error) => {
       toast({
@@ -63,27 +68,40 @@ export function TicketForm({ initialLocation }: TicketFormProps) {
   });
 
   const onSubmit = (data: any) => {
-    if (!data.location) {
+    try {
+      if (!data.location) {
+        toast({
+          title: "Location Required",
+          description: "Please scan a QR code to set the location",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const formData = new FormData();
+      // Add required fields
+      formData.append("title", data.title);
+      formData.append("description", data.description);
+      formData.append("location", data.location);
+      formData.append("priority", data.priority);
+      formData.append("status", "OPEN");
+
+      // Add images if any
+      if (imageFiles.length > 0) {
+        imageFiles.forEach((file) => {
+          formData.append("images", file);
+        });
+      }
+
+      createTicketMutation.mutate(formData);
+    } catch (error) {
+      console.error('Form submission error:', error);
       toast({
-        title: "Location Required",
-        description: "Please scan a QR code to set the location",
+        title: "Error",
+        description: "Failed to submit the ticket. Please try again.",
         variant: "destructive",
       });
-      return;
     }
-
-    const formData = new FormData();
-    formData.append("title", data.title);
-    formData.append("description", data.description);
-    formData.append("location", data.location);
-    formData.append("priority", data.priority);
-    formData.append("status", "OPEN"); // Explicitly set status to OPEN
-
-    imageFiles.forEach((file) => {
-      formData.append("images", file);
-    });
-
-    createTicketMutation.mutate(formData);
   };
 
   return (
