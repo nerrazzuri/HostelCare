@@ -20,5 +20,6 @@ export interface IStorage {
   updateTicket(id: number, updates: Partial<Ticket>): Promise<Ticket>;
 
   getTicketUpdates(ticketId: number): Promise<TicketUpdate[]>;
+  getAllTicketUpdates(): Promise<TicketUpdate[]>;
   createTicketUpdate(data: Partial<TicketUpdate>): Promise<TicketUpdate>;
 }

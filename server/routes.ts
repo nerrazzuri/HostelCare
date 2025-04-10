@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { TicketStatus, TicketPriority, insertTicketSchema } from "@shared/schema";
+import { TicketStatus, TicketPriority, insertTicketSchema, insertTicketUpdateSchema, insertVendorSchema } from "@shared/schema";
 import multer from "multer";
 import { z } from "zod";
 
@@ -84,19 +84,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(ticket);
   });
 
-  app.post("/api/tickets/:id/updates", upload.array("images"), async (req, res) => {
+  app.post("/api/tickets/:id/updates", upload.fields([
+    { name: 'images', maxCount: 5 },
+    { name: 'receiptImages', maxCount: 5 }
+  ]), async (req, res) => {
     if (!req.user) return res.sendStatus(401);
 
     const ticketId = parseInt(req.params.id);
-    const files = req.files as Express.Multer.File[] | undefined;
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
 
     try {
       const updateData = insertTicketUpdateSchema.parse({
         ...req.body,
         ticketId,
-        images: files?.map(f => f.path) || [],
+        images: files?.images?.map(f => f.path) || [],
+        receiptImages: files?.receiptImages?.map(f => f.path) || [],
         createdBy: req.user.id,
-        comment: req.body.comment || '' // Provide default empty string if comment is missing
+        comment: req.body.comment || '', // Provide default empty string if comment is missing
+        cost: req.body.cost || null,
+        costType: req.body.costType || null
       });
 
       const update = await storage.createTicketUpdate(updateData);
@@ -105,6 +111,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Ticket update validation error:', error);
       res.status(400).json({ message: 'Invalid ticket update data', error });
     }
+  });
+  
+  // Get ticket updates for a specific ticket
+  app.get("/api/tickets/:id/updates", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    
+    const ticketId = parseInt(req.params.id);
+    const updates = await storage.getTicketUpdates(ticketId);
+    
+    // Fetch user information for each update
+    const updatesWithUserInfo = await Promise.all(
+      updates.map(async (update) => {
+        const user = await storage.getUser(update.createdBy);
+        return { ...update, user };
+      })
+    );
+    
+    res.json(updatesWithUserInfo);
+  });
+  
+  // Get all ticket updates for analytics
+  app.get("/api/ticket-updates", requireRole(["admin"]), async (req, res) => {
+    const updates = await storage.getAllTicketUpdates();
+    res.json(updates);
   });
 
   // Vendors

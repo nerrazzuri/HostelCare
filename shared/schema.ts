@@ -110,6 +110,9 @@ export const insertTicketUpdateSchema = createInsertSchema(ticketUpdates).pick({
   ticketId: true,
   comment: true,
   images: true,
+  cost: true,
+  costType: true,
+  receiptImages: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

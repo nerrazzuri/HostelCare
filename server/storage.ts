@@ -99,6 +99,10 @@ export class DatabaseStorage implements IStorage {
   async getTicketUpdates(ticketId: number): Promise<TicketUpdate[]> {
     return db.select().from(ticketUpdates).where(eq(ticketUpdates.ticketId, ticketId));
   }
+  
+  async getAllTicketUpdates(): Promise<TicketUpdate[]> {
+    return db.select().from(ticketUpdates);
+  }
 
   async createTicketUpdate(data: Partial<TicketUpdate>): Promise<TicketUpdate> {
     const [update] = await db.insert(ticketUpdates).values(data).returning();
