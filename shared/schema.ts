@@ -68,6 +68,9 @@ export const ticketUpdates = pgTable("ticket_updates", {
   ticketId: integer("ticket_id").notNull().references(() => tickets.id),
   comment: text("comment").notNull(),
   images: text("images").array(),
+  cost: text("cost"), // Store cost as text to handle currency formatting
+  costType: text("cost_type"), // 'repair' for warden costs, 'vendor' for vendor costs
+  receiptImages: text("receipt_images").array(), // For storing receipt/invoice images
   createdBy: integer("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
