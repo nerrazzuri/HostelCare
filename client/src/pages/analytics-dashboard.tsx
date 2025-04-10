@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, BarChart3, Clock, Download, Target, Wrench, Store } from "lucide-react";
 import { useLocation } from "wouter";
-import { Ticket, TicketStatus, TicketPriority } from "@shared/schema";
+import { Ticket, TicketStatus, TicketPriority, TicketUpdate } from "@shared/schema";
 
 export default function AnalyticsDashboard() {
   const [, setLocation] = useLocation();
@@ -88,31 +88,44 @@ export default function AnalyticsDashboard() {
   };
 
   // Calculate cost metrics
-  const ticketUpdates = useQuery({
+  const ticketUpdates = useQuery<TicketUpdate[]>({
     queryKey: ["/api/ticket-updates"],
   });
 
   const updates = ticketUpdates.data || [];
 
-  const costAnalysis = updates.reduce((acc, update) => {
+  const costAnalysis = updates.reduce<{ total: number; repair: number; vendor: number }>((acc, update) => {
     if (update.cost) {
-      acc.total += update.cost;
-      acc[update.costType] = (acc[update.costType] || 0) + update.cost;
+      const cost = parseFloat(update.cost);
+      if (!isNaN(cost)) {
+        acc.total += cost;
+        if (update.costType === 'repair') {
+          acc.repair += cost;
+        } else if (update.costType === 'vendor') {
+          acc.vendor += cost;
+        }
+      }
     }
     return acc;
   }, { total: 0, repair: 0, vendor: 0 });
 
   // Monthly cost trends
-  const monthlyTrends = updates.reduce((acc, update) => {
+  const monthlyTrends = updates.reduce<Record<string, { repair: number; vendor: number }>>((acc, update) => {
     if (update.cost) {
-      const month = new Date(update.createdAt).toLocaleString('default', { month: 'long' });
-      if (!acc[month]) {
-        acc[month] = { repair: 0, vendor: 0 };
+      const cost = parseFloat(update.cost);
+      if (!isNaN(cost) && update.costType) {
+        const month = new Date(update.createdAt).toLocaleString('default', { month: 'long' });
+        if (!acc[month]) {
+          acc[month] = { repair: 0, vendor: 0 };
+        }
+        // Only add cost to valid cost types (repair or vendor)
+        if (update.costType === 'repair' || update.costType === 'vendor') {
+          acc[month][update.costType] += cost;
+        }
       }
-      acc[month][update.costType] += update.cost;
     }
     return acc;
-  }, {} as Record<string, { repair: number; vendor: number }>);
+  }, {});
 
   if (isLoading || ticketUpdates.isLoading) {
     return (
